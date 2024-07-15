@@ -41,17 +41,21 @@
         (function(global) {
             global.onEngineLoad = function() {
                 gse.ready(function(engine) {
+                    console.log('GameSalad engine ready');
                     var loadingElement = document.getElementById('gse-loading');
                     var playerDelegate = {
                         onLoadingBegin: function() {
+                            console.log('Loading Begin');
                             engine.showOverlay();
                             loadingElement.style.visibility = 'visible';
                         },
                         onLoadingEnd: function() {
+                            console.log('Loading End');
                             loadingElement.style.visibility = 'hidden';
                             engine.hideOverlay();
                         },
                         onWindowResize: function() {
+                            console.log('Window Resize');
                             engine.relayout();
                         }
                     };
@@ -64,11 +68,12 @@
                         document.addEventListener("webkitvisibilitychange", onVisibilityChanged, false);
                         document.addEventListener("msvisibilitychange", onVisibilityChanged, false);
                         function onVisibilityChanged() {
+                            console.log('Visibility changed');
                             if (document.hidden || document.mozHidden || document.webkitHidden || document.msHidden)
                                 gse.setGameVolume(engine, 0);
                             else
                                 gse.setGameVolume(engine, 1);
-                        };
+                        }
                     }
                     engine.setRenderFrame('gse-player');
                     engine.setOptions({
@@ -119,6 +124,7 @@
             });
 
             const data = await response.json();
+            console.log('Approval URL data:', data);
             return data.approvalUrl;
         }
 
@@ -135,13 +141,19 @@
             });
 
             const data = await response.json();
+            console.log('Authentication verification data:', data);
             return data;
         }
 
         async function authenticateUser() {
-            const approvalUrl = await getApprovalUrl();
-            window.open(approvalUrl, '_blank');
-            // Polling logic can be added here
+            try {
+                const approvalUrl = await getApprovalUrl();
+                console.log('Approval URL:', approvalUrl);
+                window.open(approvalUrl, '_blank');
+                // Polling logic can be added here
+            } catch (error) {
+                console.error('Error in authenticateUser:', error);
+            }
         }
 
         async function postScore(accessToken, userId, score) {
@@ -159,6 +171,7 @@
             });
 
             const data = await response.json();
+            console.log('Post score data:', data);
             return data;
         }
 
@@ -172,6 +185,7 @@
             });
 
             const data = await response.json();
+            console.log('Leaderboard data:', data);
             return data;
         }
 
@@ -179,12 +193,13 @@
         const gameSaladDelegate = {
             onGameCenterLogin: function() {
                 return new Promise(async (resolve, reject) => {
+                    console.log('GameCenterLogin triggered');
                     try {
                         await authenticateUser();
                         // Implement polling to check for user authentication and get tokens
-                        // For example, poll every 5 seconds
                         let authData;
                         const pollInterval = setInterval(async () => {
+                            console.log('Polling for authentication...');
                             authData = await verifyAuthentication();
                             if (authData.bearerToken) {
                                 clearInterval(pollInterval);
@@ -193,20 +208,21 @@
                             }
                         }, 5000); // Poll every 5 seconds
                     } catch (error) {
-                        console.error('Error:', error);
+                        console.error('Error in onGameCenterLogin:', error);
                         reject(error);  // Reject the promise to indicate login failure
                     }
                 });
             },
             onGameCenterPostScore: function(score, leaderboard) {
                 return new Promise(async (resolve, reject) => {
+                    console.log('GameCenterPostScore triggered:', score, leaderboard);
                     try {
                         const authData = await verifyAuthentication();
                         const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
                         console.log('Score Post Response:', scorePostResponse);
                         resolve();
                     } catch (error) {
-                        console.error('Error:', error);
+                        console.error('Error in onGameCenterPostScore:', error);
                         reject(error);
                     }
                 });
@@ -214,10 +230,12 @@
         };
 
         gse.ready(function(engine) {
+            console.log('Appending GameSalad delegate');
             engine.appendDelegate(gameSaladDelegate);
         });
 
         document.getElementById('gse-text-done').addEventListener('click', async () => {
+            console.log('Done button clicked');
             try {
                 await gameSaladDelegate.onGameCenterLogin();
                 console.log('User logged in successfully.');
