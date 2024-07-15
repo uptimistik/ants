@@ -55,6 +55,7 @@
             }
 
             async function getApprovalUrl() {
+                console.log('Generating approval URL...');
                 codeVerifier = generateCodeVerifier();
                 codeChallenge = await generateCodeChallenge(codeVerifier);
 
@@ -77,6 +78,7 @@
             }
 
             async function verifyAuthentication() {
+                console.log('Verifying authentication...');
                 const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
                 const response = await fetch(tokenUrl, {
                     method: 'POST',
@@ -105,6 +107,7 @@
             }
 
             async function postScore(accessToken, userId, score) {
+                console.log(`Posting score: ${score} for user: ${userId}`);
                 const postScoreUrl = `${FRACTAL_API_BASE_URL}/scores`;
                 const response = await fetch(postScoreUrl, {
                     method: 'POST',
@@ -124,6 +127,7 @@
             }
 
             async function fetchLeaderboard(accessToken) {
+                console.log('Fetching leaderboard...');
                 const leaderboardUrl = `${FRACTAL_API_BASE_URL}/leaderboard`;
                 const response = await fetch(leaderboardUrl, {
                     method: 'GET',
@@ -138,6 +142,7 @@
             }
 
             function sendLoLMessage(messageName, payloadObj) {
+                console.log(`Sending LoL message: ${messageName}`);
                 parent.postMessage({
                     message: messageName,
                     payload: JSON.stringify(payloadObj)
