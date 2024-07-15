@@ -36,7 +36,7 @@
     <script type="text/javascript">
         (function (global) {
             const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
-            const REDIRECT_URI = 'http://localhost'; // Change this to your actual redirect URI
+            const REDIRECT_URI = 'https://uptimistik.github.io/ants/Ants_Vs_Anteaters/'; // Ensure this is the correct redirect URI
             const FRACTAL_API_BASE_URL = 'https://api.fractal.is';
             const TOURNAMENT_ID = 'your_tournament_id'; // Replace with your actual tournament ID
             let codeVerifier, codeChallenge;
@@ -266,8 +266,6 @@
                         },
                         onGameReady: function (width, height) {
                             console.log('Game is Ready:', width, height);
-                       
-
                         }
                     };
 
@@ -300,4 +298,3 @@
     <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
-
