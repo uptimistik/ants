@@ -80,6 +80,127 @@
                 });
             };
         }(window));
+
+        // Fractal Integration
+        const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
+        const CLIENT_SECRET = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
+        const FRACTAL_API_BASE_URL = 'https://auth-api.fractal.is';
+        let codeVerifier, codeChallenge;
+
+        function generateCodeVerifier() {
+            const array = new Uint32Array(56 / 2);
+            window.crypto.getRandomValues(array);
+            return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
+        }
+
+        async function generateCodeChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await window.crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        async function getApprovalUrl() {
+            codeVerifier = generateCodeVerifier();
+            codeChallenge = await generateCodeChallenge(codeVerifier);
+
+            const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
+            const response = await fetch(authUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    scopes: ['identify', 'coins:read', 'items:read'],
+                    codeChallenge: codeChallenge
+                })
+            });
+
+            const data = await response.json();
+            return data.approvalUrl;
+        }
+
+        async function verifyAuthentication() {
+            const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
+            const response = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    verifier: codeVerifier
+                })
+            });
+
+            const data = await response.json();
+            return data;
+        }
+
+        async function authenticateUser() {
+            const approvalUrl = await getApprovalUrl();
+            window.open(approvalUrl, '_blank');
+            // Polling logic can be added here
+        }
+
+        async function postScore(accessToken, userId, score) {
+            const postScoreUrl = `${FRACTAL_API_BASE_URL}/scores`;
+            const response = await fetch(postScoreUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    userId: userId,
+                    score: score
+                })
+            });
+
+            const data = await response.json();
+            return data;
+        }
+
+        async function fetchLeaderboard(accessToken) {
+            const leaderboardUrl = `${FRACTAL_API_BASE_URL}/leaderboard`;
+            const response = await fetch(leaderboardUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            const data = await response.json();
+            return data;
+        }
+
+        // Example usage on user interaction
+        document.getElementById('gse-text-done').addEventListener('click', async () => {
+            try {
+                await authenticateUser();
+                // Implement polling to check for user authentication and get tokens
+                // For example, poll every 5 seconds
+                let authData;
+                const pollInterval = setInterval(async () => {
+                    authData = await verifyAuthentication();
+                    if (authData.bearerToken) {
+                        clearInterval(pollInterval);
+                        console.log('Authenticated User:', authData);
+
+                        const scorePostResponse = await postScore(authData.bearerToken, authData.userId, 1000); // Replace 1000 with actual score
+                        console.log('Score Post Response:', scorePostResponse);
+
+                        const leaderboard = await fetchLeaderboard(authData.bearerToken);
+                        console.log('Leaderboard:', leaderboard);
+
+                        // Display leaderboard on the page or handle it as needed
+                    }
+                }, 5000); // Poll every 5 seconds
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
     </script>
     <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
