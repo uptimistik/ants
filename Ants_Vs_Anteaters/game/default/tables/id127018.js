@@ -1,0 +1,1 @@
+pgf.jsonp("tables/id127018", {"id":"id127018","version":"1.000000","name":"Leaderboard","numRows":1,"numCols":2,"flags":null,"tableType":null,"rows":{"id":"0","name":""},"columns":[{"id":"1","name":"Username","type":"1","readonly":"0","$":[""]},{"id":"2","name":"TotalKills","type":"2","readonly":"0","$":[0]}]});

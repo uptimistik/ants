@@ -117,7 +117,10 @@
                     },
                     body: JSON.stringify({
                         userId: userId,
-                        score: score
+                        score: {
+                            type: 'TotalKills',
+                            value: score
+                        }
                     })
                 });
 
@@ -200,6 +203,27 @@
                                     resolve();
                                 } catch (error) {
                                     console.error('Error in onGameCenterPostScore:', error);
+                                    reject(error);
+                                }
+                            });
+                        },
+                        onGameCenterShowLeaderboard: function () {
+                            return new Promise(async (resolve, reject) => {
+                                console.log('GameCenterShowLeaderboard triggered');
+                                try {
+                                    const authData = await verifyAuthentication();
+                                    const leaderboardData = await fetchLeaderboard(authData.bearerToken);
+                                    console.log('Leaderboard Data:', leaderboardData);
+
+                                    // Send leaderboard data to GameSalad
+                                    leaderboardData.forEach((entry, index) => {
+                                        engine.postEvent('externalWriteGameTableCell', null, `Leaderboard.Username`, index + 1, entry.userId);
+                                        engine.postEvent('externalWriteGameTableCell', null, `Leaderboard.TotalKills`, index + 1, entry.value);
+                                    });
+
+                                    resolve();
+                                } catch (error) {
+                                    console.error('Error in onGameCenterShowLeaderboard:', error);
                                     reject(error);
                                 }
                             });
