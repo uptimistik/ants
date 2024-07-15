@@ -36,9 +36,8 @@
     <script type="text/javascript">
         (function (global) {
             const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
-            const CLIENT_SECRET = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
             const FRACTAL_API_BASE_URL = 'https://auth-api.fractal.is';
-            let codeVerifier, codeChallenge;
+            let codeVerifier, codeChallenge, authCode;
 
             function generateCodeVerifier() {
                 const array = new Uint32Array(56 / 2);
@@ -77,8 +76,19 @@
                 return data.approvalUrl;
             }
 
+            function extractAuthCodeFromUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('code');
+            }
+
             async function verifyAuthentication() {
                 console.log('Verifying authentication...');
+                authCode = extractAuthCodeFromUrl();
+                if (!authCode) {
+                    console.error('Auth code not found in URL');
+                    return;
+                }
+
                 const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
                 const response = await fetch(tokenUrl, {
                     method: 'POST',
@@ -86,7 +96,9 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        verifier: codeVerifier
+                        clientId: CLIENT_ID,
+                        code: authCode,
+                        codeVerifier: codeVerifier
                     })
                 });
 
@@ -99,8 +111,7 @@
                 try {
                     const approvalUrl = await getApprovalUrl();
                     console.log('Approval URL:', approvalUrl);
-                    window.open(approvalUrl, '_blank');
-                    // Polling logic can be added here
+                    window.location.href = approvalUrl;
                 } catch (error) {
                     console.error('Error in authenticateUser:', error);
                 }
@@ -177,16 +188,7 @@
                                 console.log('GameCenterLogin triggered');
                                 try {
                                     await authenticateUser();
-                                    let authData;
-                                    const pollInterval = setInterval(async () => {
-                                        console.log('Polling for authentication...');
-                                        authData = await verifyAuthentication();
-                                        if (authData.bearerToken) {
-                                            clearInterval(pollInterval);
-                                            console.log('Authenticated User:', authData);
-                                            resolve();  // Resolve the promise to indicate login success
-                                        }
-                                    }, 5000); // Poll every 5 seconds
+                                    resolve();
                                 } catch (error) {
                                     console.error('Error in onGameCenterLogin:', error);
                                     reject(error);  // Reject the promise to indicate login failure
@@ -198,7 +200,7 @@
                                 console.log('GameCenterPostScore triggered:', score, leaderboard);
                                 try {
                                     const authData = await verifyAuthentication();
-                                    const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
+                                    const scorePostResponse = await postScore(authData.accessToken, authData.userId, score);
                                     console.log('Score Post Response:', scorePostResponse);
                                     resolve();
                                 } catch (error) {
@@ -212,7 +214,7 @@
                                 console.log('GameCenterShowLeaderboard triggered');
                                 try {
                                     const authData = await verifyAuthentication();
-                                    const leaderboardData = await fetchLeaderboard(authData.bearerToken);
+                                    const leaderboardData = await fetchLeaderboard(authData.accessToken);
                                     console.log('Leaderboard Data:', leaderboardData);
 
                                     // Send leaderboard data to GameSalad
@@ -248,6 +250,16 @@
                     engine.play();
                 });
             };
+
+            // Check if returning from authentication
+            if (window.location.search.includes('code')) {
+                verifyAuthentication().then(authData => {
+                    console.log('Authentication successful:', authData);
+                    // Handle post-authentication actions, e.g., fetching leaderboard
+                }).catch(error => {
+                    console.error('Error during authentication:', error);
+                });
+            }
 
         }(window));
     </script>
