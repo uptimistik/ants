@@ -175,30 +175,54 @@
             return data;
         }
 
-        // Example usage on user interaction
+        // GameSalad Delegates
+        const gameSaladDelegate = {
+            onGameCenterLogin: function() {
+                return new Promise(async (resolve, reject) => {
+                    try {
+                        await authenticateUser();
+                        // Implement polling to check for user authentication and get tokens
+                        // For example, poll every 5 seconds
+                        let authData;
+                        const pollInterval = setInterval(async () => {
+                            authData = await verifyAuthentication();
+                            if (authData.bearerToken) {
+                                clearInterval(pollInterval);
+                                console.log('Authenticated User:', authData);
+                                resolve();  // Resolve the promise to indicate login success
+                            }
+                        }, 5000); // Poll every 5 seconds
+                    } catch (error) {
+                        console.error('Error:', error);
+                        reject(error);  // Reject the promise to indicate login failure
+                    }
+                });
+            },
+            onGameCenterPostScore: function(score, leaderboard) {
+                return new Promise(async (resolve, reject) => {
+                    try {
+                        const authData = await verifyAuthentication();
+                        const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
+                        console.log('Score Post Response:', scorePostResponse);
+                        resolve();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        reject(error);
+                    }
+                });
+            }
+        };
+
+        gse.ready(function(engine) {
+            engine.appendDelegate(gameSaladDelegate);
+        });
+
         document.getElementById('gse-text-done').addEventListener('click', async () => {
             try {
-                await authenticateUser();
-                // Implement polling to check for user authentication and get tokens
-                // For example, poll every 5 seconds
-                let authData;
-                const pollInterval = setInterval(async () => {
-                    authData = await verifyAuthentication();
-                    if (authData.bearerToken) {
-                        clearInterval(pollInterval);
-                        console.log('Authenticated User:', authData);
-
-                        const scorePostResponse = await postScore(authData.bearerToken, authData.userId, 1000); // Replace 1000 with actual score
-                        console.log('Score Post Response:', scorePostResponse);
-
-                        const leaderboard = await fetchLeaderboard(authData.bearerToken);
-                        console.log('Leaderboard:', leaderboard);
-
-                        // Display leaderboard on the page or handle it as needed
-                    }
-                }, 5000); // Poll every 5 seconds
+                await gameSaladDelegate.onGameCenterLogin();
+                console.log('User logged in successfully.');
             } catch (error) {
-                console.error('Error:', error);
+                console.error('User login failed:', error);
             }
         });
     </script>
