@@ -28,53 +28,188 @@
                     <textarea id="gse-text-input"></textarea>
                 </div>
             </div>
-            <div id="gse-browser" class="gse-dialog">            
-                <iframe id="gse-browser-frame"></iframe>
-                <button id="gse-browser-close" href="#">&#10006;</button>
-            </div>
             <div id="gse-loading" style="visibility: visible;">
                 <img src="images/gse-loading.png" />
             </div>
         </div>
     </div>
     <script type="text/javascript">
-        (function(global) {
-            global.onEngineLoad = function() {
-                gse.ready(function(engine) {
+        (function (global) {
+            const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
+            const CLIENT_SECRET = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
+            const FRACTAL_API_BASE_URL = 'https://auth-api.fractal.is';
+            let codeVerifier, codeChallenge;
+
+            function generateCodeVerifier() {
+                const array = new Uint32Array(56 / 2);
+                window.crypto.getRandomValues(array);
+                return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
+            }
+
+            async function generateCodeChallenge(verifier) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(verifier);
+                const digest = await window.crypto.subtle.digest('SHA-256', data);
+                return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
+                    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            }
+
+            async function getApprovalUrl() {
+                codeVerifier = generateCodeVerifier();
+                codeChallenge = await generateCodeChallenge(codeVerifier);
+
+                const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
+                const response = await fetch(authUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        scopes: ['identify', 'coins:read', 'items:read'],
+                        codeChallenge: codeChallenge
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Approval URL data:', data);
+                return data.approvalUrl;
+            }
+
+            async function verifyAuthentication() {
+                const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
+                const response = await fetch(tokenUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        verifier: codeVerifier
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Authentication verification data:', data);
+                return data;
+            }
+
+            async function authenticateUser() {
+                try {
+                    const approvalUrl = await getApprovalUrl();
+                    console.log('Approval URL:', approvalUrl);
+                    window.open(approvalUrl, '_blank');
+                    // Polling logic can be added here
+                } catch (error) {
+                    console.error('Error in authenticateUser:', error);
+                }
+            }
+
+            async function postScore(accessToken, userId, score) {
+                const postScoreUrl = `${FRACTAL_API_BASE_URL}/scores`;
+                const response = await fetch(postScoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        score: score
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Post score data:', data);
+                return data;
+            }
+
+            async function fetchLeaderboard(accessToken) {
+                const leaderboardUrl = `${FRACTAL_API_BASE_URL}/leaderboard`;
+                const response = await fetch(leaderboardUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                const data = await response.json();
+                console.log('Leaderboard data:', data);
+                return data;
+            }
+
+            function sendLoLMessage(messageName, payloadObj) {
+                parent.postMessage({
+                    message: messageName,
+                    payload: JSON.stringify(payloadObj)
+                }, '*');
+            }
+
+            global.onEngineLoad = function () {
+                gse.ready(function (engine) {
                     console.log('GameSalad engine ready');
                     var loadingElement = document.getElementById('gse-loading');
+
                     var playerDelegate = {
-                        onLoadingBegin: function() {
+                        onLoadingBegin: function () {
                             console.log('Loading Begin');
                             engine.showOverlay();
                             loadingElement.style.visibility = 'visible';
                         },
-                        onLoadingEnd: function() {
+                        onLoadingEnd: function () {
                             console.log('Loading End');
                             loadingElement.style.visibility = 'hidden';
                             engine.hideOverlay();
                         },
-                        onWindowResize: function() {
+                        onWindowResize: function () {
                             console.log('Window Resize');
                             engine.relayout();
+                        },
+                        onGameCenterLogin: function () {
+                            return new Promise(async (resolve, reject) => {
+                                console.log('GameCenterLogin triggered');
+                                try {
+                                    await authenticateUser();
+                                    let authData;
+                                    const pollInterval = setInterval(async () => {
+                                        console.log('Polling for authentication...');
+                                        authData = await verifyAuthentication();
+                                        if (authData.bearerToken) {
+                                            clearInterval(pollInterval);
+                                            console.log('Authenticated User:', authData);
+                                            resolve();  // Resolve the promise to indicate login success
+                                        }
+                                    }, 5000); // Poll every 5 seconds
+                                } catch (error) {
+                                    console.error('Error in onGameCenterLogin:', error);
+                                    reject(error);  // Reject the promise to indicate login failure
+                                }
+                            });
+                        },
+                        onGameCenterPostScore: function (score, leaderboard) {
+                            return new Promise(async (resolve, reject) => {
+                                console.log('GameCenterPostScore triggered:', score, leaderboard);
+                                try {
+                                    const authData = await verifyAuthentication();
+                                    const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
+                                    console.log('Score Post Response:', scorePostResponse);
+                                    resolve();
+                                } catch (error) {
+                                    console.error('Error in onGameCenterPostScore:', error);
+                                    reject(error);
+                                }
+                            });
+                        },
+                        onGameDimensionsKnown: function (width, height) {
+                            console.log('Game dimensions known:', width, height);
+                        },
+                        onGameReady: function (width, height) {
+                            console.log('Game is Ready:', width, height);
                         }
                     };
+
                     engine.appendDelegate(playerDelegate);
                     window.addEventListener('resize', playerDelegate.onWindowResize, false);
-                    var MUTE_ON_HIDDEN = false;
-                    if (MUTE_ON_HIDDEN) {
-                        document.addEventListener("visibilitychange", onVisibilityChanged, false);
-                        document.addEventListener("mozvisibilitychange", onVisibilityChanged, false);
-                        document.addEventListener("webkitvisibilitychange", onVisibilityChanged, false);
-                        document.addEventListener("msvisibilitychange", onVisibilityChanged, false);
-                        function onVisibilityChanged() {
-                            console.log('Visibility changed');
-                            if (document.hidden || document.mozHidden || document.webkitHidden || document.msHidden)
-                                gse.setGameVolume(engine, 0);
-                            else
-                                gse.setGameVolume(engine, 1);
-                        }
-                    }
+
                     engine.setRenderFrame('gse-player');
                     engine.setOptions({
                         'viewport-reference': 'window',
@@ -84,165 +219,8 @@
                     engine.play();
                 });
             };
+
         }(window));
-
-        // Fractal Integration
-        const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
-        const CLIENT_SECRET = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
-        const FRACTAL_API_BASE_URL = 'https://auth-api.fractal.is';
-        let codeVerifier, codeChallenge;
-
-        function generateCodeVerifier() {
-            const array = new Uint32Array(56 / 2);
-            window.crypto.getRandomValues(array);
-            return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
-        }
-
-        async function generateCodeChallenge(verifier) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(verifier);
-            const digest = await window.crypto.subtle.digest('SHA-256', data);
-            return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        }
-
-        async function getApprovalUrl() {
-            codeVerifier = generateCodeVerifier();
-            codeChallenge = await generateCodeChallenge(codeVerifier);
-
-            const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
-            const response = await fetch(authUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    clientId: CLIENT_ID,
-                    scopes: ['identify', 'coins:read', 'items:read'],
-                    codeChallenge: codeChallenge
-                })
-            });
-
-            const data = await response.json();
-            console.log('Approval URL data:', data);
-            return data.approvalUrl;
-        }
-
-        async function verifyAuthentication() {
-            const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
-            const response = await fetch(tokenUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    verifier: codeVerifier
-                })
-            });
-
-            const data = await response.json();
-            console.log('Authentication verification data:', data);
-            return data;
-        }
-
-        async function authenticateUser() {
-            try {
-                const approvalUrl = await getApprovalUrl();
-                console.log('Approval URL:', approvalUrl);
-                window.open(approvalUrl, '_blank');
-                // Polling logic can be added here
-            } catch (error) {
-                console.error('Error in authenticateUser:', error);
-            }
-        }
-
-        async function postScore(accessToken, userId, score) {
-            const postScoreUrl = `${FRACTAL_API_BASE_URL}/scores`;
-            const response = await fetch(postScoreUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify({
-                    userId: userId,
-                    score: score
-                })
-            });
-
-            const data = await response.json();
-            console.log('Post score data:', data);
-            return data;
-        }
-
-        async function fetchLeaderboard(accessToken) {
-            const leaderboardUrl = `${FRACTAL_API_BASE_URL}/leaderboard`;
-            const response = await fetch(leaderboardUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-
-            const data = await response.json();
-            console.log('Leaderboard data:', data);
-            return data;
-        }
-
-        // GameSalad Delegates
-        const gameSaladDelegate = {
-            onGameCenterLogin: function() {
-                return new Promise(async (resolve, reject) => {
-                    console.log('GameCenterLogin triggered');
-                    try {
-                        await authenticateUser();
-                        // Implement polling to check for user authentication and get tokens
-                        let authData;
-                        const pollInterval = setInterval(async () => {
-                            console.log('Polling for authentication...');
-                            authData = await verifyAuthentication();
-                            if (authData.bearerToken) {
-                                clearInterval(pollInterval);
-                                console.log('Authenticated User:', authData);
-                                resolve();  // Resolve the promise to indicate login success
-                            }
-                        }, 5000); // Poll every 5 seconds
-                    } catch (error) {
-                        console.error('Error in onGameCenterLogin:', error);
-                        reject(error);  // Reject the promise to indicate login failure
-                    }
-                });
-            },
-            onGameCenterPostScore: function(score, leaderboard) {
-                return new Promise(async (resolve, reject) => {
-                    console.log('GameCenterPostScore triggered:', score, leaderboard);
-                    try {
-                        const authData = await verifyAuthentication();
-                        const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
-                        console.log('Score Post Response:', scorePostResponse);
-                        resolve();
-                    } catch (error) {
-                        console.error('Error in onGameCenterPostScore:', error);
-                        reject(error);
-                    }
-                });
-            }
-        };
-
-        gse.ready(function(engine) {
-            console.log('Appending GameSalad delegate');
-            engine.appendDelegate(gameSaladDelegate);
-        });
-
-        document.getElementById('gse-text-done').addEventListener('click', async () => {
-            console.log('Done button clicked');
-            try {
-                await gameSaladDelegate.onGameCenterLogin();
-                console.log('User logged in successfully.');
-            } catch (error) {
-                console.error('User login failed:', error);
-            }
-        });
     </script>
     <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
