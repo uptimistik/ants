@@ -39,7 +39,7 @@
             const REDIRECT_URI = 'https://uptimistik.github.io/ants/Ants_Vs_Anteaters/';
             const FRACTAL_API_BASE_URL = 'https://api.fractal.is';
             const TOURNAMENT_ID = 'your_tournament_id';
-            let codeVerifier, codeChallenge;
+            let codeVerifier, codeChallenge, authWindow;
 
             function generateCodeVerifier() {
                 const array = new Uint32Array(56 / 2);
@@ -116,7 +116,13 @@
                 try {
                     const approvalUrl = await getApprovalUrl();
                     if (approvalUrl) {
-                        window.location.href = approvalUrl;
+                        authWindow = window.open(approvalUrl, '_blank', 'width=500,height=600');
+                        const checkAuth = setInterval(() => {
+                            if (authWindow.closed) {
+                                clearInterval(checkAuth);
+                                window.location.href = REDIRECT_URI;
+                            }
+                        }, 1000);
                     } else {
                         console.error('Approval URL not obtained.');
                     }
@@ -184,8 +190,8 @@
                             loadingElement.style.visibility = 'visible';
                         },
                         onLoadingEnd: function () {
-                            loadingElement.style.visibility = 'hidden';
                             engine.hideOverlay();
+                            loadingElement.style.visibility = 'hidden';
                         },
                         onWindowResize: function () {
                             engine.relayout();
@@ -207,7 +213,7 @@
                                     const authCode = extractAuthCodeFromUrl();
                                     const authData = await verifyAuthentication(authCode);
                                     if (authData) {
-                                        const scorePostResponse = await postScore(authData.accessToken, authData.userId, score);
+                                        await postScore(authData.accessToken, authData.userId, score);
                                         resolve();
                                     } else {
                                         reject('Failed to verify authentication.');
