@@ -48,7 +48,7 @@
           })
         });
         if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
+          throw new Error(`Error: ${response.status} - ${response.statusText}`);
         }
         const data = await response.json();
         return data.approvalUrl;
@@ -66,7 +66,7 @@
           })
         });
         if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
+          throw new Error(`Error: ${response.status} - ${response.statusText}`);
         }
         const data = await response.json();
         return data.accessToken;
@@ -112,7 +112,7 @@
           const approvalUrl = await getApprovalUrl(clientId, ['identify', 'coins:read', 'items:read'], codeChallenge);
           window.location.href = approvalUrl;
         } catch (error) {
-          console.error('Failed to get approval URL:', error);
+          console.error('Failed to get approval URL:', error.message);
         }
 
         // Polling for authentication status
@@ -125,7 +125,7 @@
               await getUserInfo(accessToken);
             }
           } catch (error) {
-            console.error('Error verifying authentication:', error);
+            console.error('Error verifying authentication:', error.message);
           }
         }, 5000);
       }
