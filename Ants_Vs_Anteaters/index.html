@@ -48,7 +48,8 @@
           })
         });
         if (!response.ok) {
-          throw new Error(`Error: ${response.status} - ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Error: ${response.status} - ${errorText}`);
         }
         const data = await response.json();
         return data.approvalUrl;
@@ -66,7 +67,8 @@
           })
         });
         if (!response.ok) {
-          throw new Error(`Error: ${response.status} - ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Error: ${response.status} - ${errorText}`);
         }
         const data = await response.json();
         return data.accessToken;
@@ -92,10 +94,11 @@
         return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
       }
 
-      function sha256(plain) {
+      async function sha256(plain) {
         const encoder = new TextEncoder();
         const data = encoder.encode(plain);
-        return window.crypto.subtle.digest('SHA-256', data);
+        const hash = await window.crypto.subtle.digest('SHA-256', data);
+        return hash;
       }
 
       function base64urlencode(a) {
@@ -110,6 +113,7 @@
 
         try {
           const approvalUrl = await getApprovalUrl(clientId, ['identify', 'coins:read', 'items:read'], codeChallenge);
+          console.log('Approval URL:', approvalUrl);
           window.location.href = approvalUrl;
         } catch (error) {
           console.error('Failed to get approval URL:', error.message);
