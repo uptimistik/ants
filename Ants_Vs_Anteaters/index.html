@@ -59,7 +59,7 @@
                 codeVerifier = generateCodeVerifier();
                 codeChallenge = await generateCodeChallenge(codeVerifier);
 
-                const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
+                const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorization`;
                 const response = await fetch(authUrl, {
                     method: 'POST',
                     headers: {
