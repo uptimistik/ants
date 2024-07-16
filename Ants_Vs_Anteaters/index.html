@@ -36,8 +36,9 @@
     <script type="text/javascript">
         (function (global) {
             const CLIENT_ID = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
-            const CLIENT_SECRET = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
-            const FRACTAL_API_BASE_URL = 'https://auth-api.fractal.is';
+            const REDIRECT_URI = 'https://uptimistik.github.io/ants/Ants_Vs_Anteaters/index.html'; // Change this to your actual redirect URI
+            const FRACTAL_API_BASE_URL = 'https://api.fractal.is';
+            const TOURNAMENT_ID = 'your_tournament_id'; // Replace with your actual tournament ID
             let codeVerifier, codeChallenge;
 
             function generateCodeVerifier() {
@@ -60,6 +61,8 @@
                 codeChallenge = await generateCodeChallenge(codeVerifier);
 
                 const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
+                console.log('authUrl:', authUrl); // Log authUrl to debug
+
                 const response = await fetch(authUrl, {
                     method: 'POST',
                     headers: {
@@ -67,28 +70,50 @@
                     },
                     body: JSON.stringify({
                         clientId: CLIENT_ID,
+                        redirectUri: REDIRECT_URI,
                         scopes: ['identify', 'coins:read', 'items:read'],
-                        codeChallenge: codeChallenge
+                        codeChallenge: codeChallenge,
+                        codeChallengeMethod: 'S256'
                     })
                 });
+
+                if (!response.ok) {
+                    console.error('Failed to get approval URL:', response.statusText);
+                    return null;
+                }
 
                 const data = await response.json();
                 console.log('Approval URL data:', data);
                 return data.approvalUrl;
             }
 
-            async function verifyAuthentication() {
+            function extractAuthCodeFromUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('code');
+            }
+
+            async function verifyAuthentication(authCode) {
                 console.log('Verifying authentication...');
                 const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
+                console.log('tokenUrl:', tokenUrl); // Log tokenUrl to debug
+
                 const response = await fetch(tokenUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        verifier: codeVerifier
+                        clientId: CLIENT_ID,
+                        code: authCode,
+                        redirectUri: REDIRECT_URI,
+                        codeVerifier: codeVerifier
                     })
                 });
+
+                if (!response.ok) {
+                    console.error('Failed to verify authentication:', response.statusText);
+                    return null;
+                }
 
                 const data = await response.json();
                 console.log('Authentication verification data:', data);
@@ -98,9 +123,12 @@
             async function authenticateUser() {
                 try {
                     const approvalUrl = await getApprovalUrl();
-                    console.log('Approval URL:', approvalUrl);
-                    window.open(approvalUrl, '_blank');
-                    // Polling logic can be added here
+                    if (approvalUrl) {
+                        console.log('Approval URL:', approvalUrl);
+                        window.location.href = approvalUrl;
+                    } else {
+                        console.error('Approval URL not obtained.');
+                    }
                 } catch (error) {
                     console.error('Error in authenticateUser:', error);
                 }
@@ -108,7 +136,9 @@
 
             async function postScore(accessToken, userId, score) {
                 console.log(`Posting score: ${score} for user: ${userId}`);
-                const postScoreUrl = `${FRACTAL_API_BASE_URL}/scores`;
+                const postScoreUrl = `${FRACTAL_API_BASE_URL}/tournaments/score`;
+                console.log('postScoreUrl:', postScoreUrl); // Log postScoreUrl to debug
+
                 const response = await fetch(postScoreUrl, {
                     method: 'POST',
                     headers: {
@@ -116,13 +146,16 @@
                         'Authorization': `Bearer ${accessToken}`
                     },
                     body: JSON.stringify({
+                        tournamentId: TOURNAMENT_ID,
                         userId: userId,
-                        score: {
-                            type: 'TotalKills',
-                            value: score
-                        }
+                        value: score
                     })
                 });
+
+                if (!response.ok) {
+                    console.error('Failed to post score:', response.statusText);
+                    return null;
+                }
 
                 const data = await response.json();
                 console.log('Post score data:', data);
@@ -131,13 +164,20 @@
 
             async function fetchLeaderboard(accessToken) {
                 console.log('Fetching leaderboard...');
-                const leaderboardUrl = `${FRACTAL_API_BASE_URL}/leaderboard`;
+                const leaderboardUrl = `${FRACTAL_API_BASE_URL}/tournaments/leaderboard/${TOURNAMENT_ID}`;
+                console.log('leaderboardUrl:', leaderboardUrl); // Log leaderboardUrl to debug
+
                 const response = await fetch(leaderboardUrl, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`
                     }
                 });
+
+                if (!response.ok) {
+                    console.error('Failed to fetch leaderboard:', response.statusText);
+                    return null;
+                }
 
                 const data = await response.json();
                 console.log('Leaderboard data:', data);
@@ -177,16 +217,7 @@
                                 console.log('GameCenterLogin triggered');
                                 try {
                                     await authenticateUser();
-                                    let authData;
-                                    const pollInterval = setInterval(async () => {
-                                        console.log('Polling for authentication...');
-                                        authData = await verifyAuthentication();
-                                        if (authData.bearerToken) {
-                                            clearInterval(pollInterval);
-                                            console.log('Authenticated User:', authData);
-                                            resolve();  // Resolve the promise to indicate login success
-                                        }
-                                    }, 5000); // Poll every 5 seconds
+                                    resolve();
                                 } catch (error) {
                                     console.error('Error in onGameCenterLogin:', error);
                                     reject(error);  // Reject the promise to indicate login failure
@@ -197,8 +228,9 @@
                             return new Promise(async (resolve, reject) => {
                                 console.log('GameCenterPostScore triggered:', score, leaderboard);
                                 try {
-                                    const authData = await verifyAuthentication();
-                                    const scorePostResponse = await postScore(authData.bearerToken, authData.userId, score);
+                                    const authCode = extractAuthCodeFromUrl();
+                                    const authData = await verifyAuthentication(authCode);
+                                    const scorePostResponse = await postScore(authData.accessToken, authData.userId, score);
                                     console.log('Score Post Response:', scorePostResponse);
                                     resolve();
                                 } catch (error) {
@@ -211,13 +243,14 @@
                             return new Promise(async (resolve, reject) => {
                                 console.log('GameCenterShowLeaderboard triggered');
                                 try {
-                                    const authData = await verifyAuthentication();
-                                    const leaderboardData = await fetchLeaderboard(authData.bearerToken);
+                                    const authCode = extractAuthCodeFromUrl();
+                                    const authData = await verifyAuthentication(authCode);
+                                    const leaderboardData = await fetchLeaderboard(authData.accessToken);
                                     console.log('Leaderboard Data:', leaderboardData);
 
                                     // Send leaderboard data to GameSalad
                                     leaderboardData.forEach((entry, index) => {
-                                        engine.postEvent('externalWriteGameTableCell', null, `Leaderboard.Username`, index + 1, entry.userId);
+                                        engine.postEvent('externalWriteGameTableCell', null, `Leaderboard.Username`, index + 1, entry.username);
                                         engine.postEvent('externalWriteGameTableCell', null, `Leaderboard.TotalKills`, index + 1, entry.value);
                                     });
 
@@ -249,10 +282,19 @@
                 });
             };
 
+            // Check if returning from authentication
+            if (window.location.search.includes('code')) {
+                const authCode = extractAuthCodeFromUrl();
+                verifyAuthentication(authCode).then(authData => {
+                    console.log('Authentication successful:', authData);
+                    // Handle post-authentication actions, e.g., fetching leaderboard
+                }).catch(error => {
+                    console.error('Error during authentication:', error);
+                });
+            }
+
         }(window));
     </script>
-    <script type="text/javascript" src="js/gse/gse-export.js">
-        
-    </script>
+    <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
