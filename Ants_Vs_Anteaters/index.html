@@ -61,8 +61,6 @@
                 codeChallenge = await generateCodeChallenge(codeVerifier);
 
                 const authUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/authorize`;
-                console.log('authUrl:', authUrl); // Log authUrl to debug
-
                 const response = await fetch(authUrl, {
                     method: 'POST',
                     headers: {
@@ -77,11 +75,6 @@
                     })
                 });
 
-                if (!response.ok) {
-                    console.error('Failed to get approval URL:', response.statusText);
-                    return null;
-                }
-
                 const data = await response.json();
                 console.log('Approval URL data:', data);
                 return data.approvalUrl;
@@ -95,8 +88,6 @@
             async function verifyAuthentication(authCode) {
                 console.log('Verifying authentication...');
                 const tokenUrl = `${FRACTAL_API_BASE_URL}/auth/signin_v2/token`;
-                console.log('tokenUrl:', tokenUrl); // Log tokenUrl to debug
-
                 const response = await fetch(tokenUrl, {
                     method: 'POST',
                     headers: {
@@ -110,11 +101,6 @@
                     })
                 });
 
-                if (!response.ok) {
-                    console.error('Failed to verify authentication:', response.statusText);
-                    return null;
-                }
-
                 const data = await response.json();
                 console.log('Authentication verification data:', data);
                 return data;
@@ -123,12 +109,8 @@
             async function authenticateUser() {
                 try {
                     const approvalUrl = await getApprovalUrl();
-                    if (approvalUrl) {
-                        console.log('Approval URL:', approvalUrl);
-                        window.location.href = approvalUrl;
-                    } else {
-                        console.error('Approval URL not obtained.');
-                    }
+                    console.log('Approval URL:', approvalUrl);
+                    window.location.href = approvalUrl;
                 } catch (error) {
                     console.error('Error in authenticateUser:', error);
                 }
@@ -137,8 +119,6 @@
             async function postScore(accessToken, userId, score) {
                 console.log(`Posting score: ${score} for user: ${userId}`);
                 const postScoreUrl = `${FRACTAL_API_BASE_URL}/tournaments/score`;
-                console.log('postScoreUrl:', postScoreUrl); // Log postScoreUrl to debug
-
                 const response = await fetch(postScoreUrl, {
                     method: 'POST',
                     headers: {
@@ -152,11 +132,6 @@
                     })
                 });
 
-                if (!response.ok) {
-                    console.error('Failed to post score:', response.statusText);
-                    return null;
-                }
-
                 const data = await response.json();
                 console.log('Post score data:', data);
                 return data;
@@ -165,19 +140,12 @@
             async function fetchLeaderboard(accessToken) {
                 console.log('Fetching leaderboard...');
                 const leaderboardUrl = `${FRACTAL_API_BASE_URL}/tournaments/leaderboard/${TOURNAMENT_ID}`;
-                console.log('leaderboardUrl:', leaderboardUrl); // Log leaderboardUrl to debug
-
                 const response = await fetch(leaderboardUrl, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`
                     }
                 });
-
-                if (!response.ok) {
-                    console.error('Failed to fetch leaderboard:', response.statusText);
-                    return null;
-                }
 
                 const data = await response.json();
                 console.log('Leaderboard data:', data);
