@@ -51,82 +51,84 @@ body {
     gse.ready(function(engine) {
       var loadingElement = document.getElementById('gse-loading');
 
-      var playerDelegate = {
-        onLoadingBegin: function() {
-          engine.showOverlay();
-          loadingElement.style.visibility = 'visible';
-        },
+      Fractal.onLoad(() => {
+        console.log('Fractal SDK loaded');
 
-        onLoadingEnd: function() {
-          loadingElement.style.visibility = 'hidden';
-          engine.hideOverlay();
-        },
+        var playerDelegate = {
+          onLoadingBegin: function() {
+            engine.showOverlay();
+            loadingElement.style.visibility = 'visible';
+          },
 
-        onWindowResize: function() {
-          engine.relayout();
-        },
+          onLoadingEnd: function() {
+            loadingElement.style.visibility = 'hidden';
+            engine.hideOverlay();
+          },
 
-        onGameReady: function (width, height) {
-          console.log('Game is ready');
-          LoLApi('gameIsReady', {
-            aspectRatio: "16:9",
-            resolution: width + "x" + height
-          });
-          LoLApi('loadState', '*');
-        },
+          onWindowResize: function() {
+            engine.relayout();
+          },
 
-        onGameCenterLogin: function () {
-          console.log('Game Service Login triggered. Starting Fractal authentication...');
-          return new Promise((resolve, reject) => {
-            Fractal.init({
-              clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
-              scopes: ['identify', 'coins:read', 'items:read'],
-              onAuthSuccess: function (token) {
-                console.log('Authenticated successfully:', token);
-                resolve();
-              },
-              onAuthFailure: function (error) {
-                console.error('Authentication failed:', error);
-                reject(error);
-              }
+          onGameReady: function (width, height) {
+            console.log('Game is ready');
+            LoLApi('gameIsReady', {
+              aspectRatio: "16:9",
+              resolution: width + "x" + height
             });
-            Fractal.authenticate();
-          });
-        },
+            LoLApi('loadState', '*');
+          },
 
-        onGameCenterShowLeaderboard: function () {
-          console.log('Show Leaderboard');
-          // Code to show the leaderboard using Fractal SDK
-          Fractal.get('/leaderboard', function (response) {
-            console.log('Leaderboard:', response);
-            // Display leaderboard
-            let leaderboardHtml = '<div class="leaderboard"><h2>Leaderboard</h2><ul>';
-            response.data.forEach(item => {
-              leaderboardHtml += `<li>${item.username}: ${item.score}</li>`;
+          onGameCenterLogin: function () {
+            console.log('Game Service Login triggered. Starting Fractal authentication...');
+            return new Promise((resolve, reject) => {
+              Fractal.init({
+                clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
+                scopes: ['identify', 'coins:read', 'items:read'],
+                onAuthSuccess: function (token) {
+                  console.log('Authenticated successfully:', token);
+                  resolve();
+                },
+                onAuthFailure: function (error) {
+                  console.error('Authentication failed:', error);
+                  reject(error);
+                }
+              });
+              Fractal.authenticate();
             });
-            leaderboardHtml += '</ul></div>';
-            document.body.innerHTML += leaderboardHtml;
-          });
-        },
+          },
 
-        onGameCenterPostScore: function (score, leaderboard) {
-          console.log('Posting score:', score);
-          Fractal.post('/leaderboard/score', { score: score }, function (response) {
-            console.log('Score posted:', response);
-          });
-        }
-      };
+          onGameCenterShowLeaderboard: function () {
+            console.log('Show Leaderboard');
+            Fractal.get('/leaderboard', function (response) {
+              console.log('Leaderboard:', response);
+              let leaderboardHtml = '<div class="leaderboard"><h2>Leaderboard</h2><ul>';
+              response.data.forEach(item => {
+                leaderboardHtml += `<li>${item.username}: ${item.score}</li>`;
+              });
+              leaderboardHtml += '</ul></div>';
+              document.body.innerHTML += leaderboardHtml;
+            });
+          },
 
-      engine.appendDelegate(playerDelegate);
-      window.addEventListener('resize', playerDelegate.onWindowResize, false);
+          onGameCenterPostScore: function (score, leaderboard) {
+            console.log('Posting score:', score);
+            Fractal.post('/leaderboard/score', { score: score }, function (response) {
+              console.log('Score posted:', response);
+            });
+          }
+        };
 
-      engine.setRenderFrame('gse-player');
-      engine.setOptions({
-        'viewport-reference': 'window',
-        'viewport-fit': 'letterbox'
+        engine.appendDelegate(playerDelegate);
+        window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+        engine.setRenderFrame('gse-player');
+        engine.setOptions({
+          'viewport-reference': 'window',
+          'viewport-fit': 'letterbox'
+        });
+        engine.loadOptionsFromURL();
+        engine.play();
       });
-      engine.loadOptionsFromURL();
-      engine.play();
     });
   };
 }(window));
