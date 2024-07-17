@@ -46,49 +46,47 @@
         engine.loadOptionsFromURL();
         engine.load();
 
-        // Define a delegate for GameSalad events
-        var playerDelegate = {
-          onGameReady: function () {
-            console.log('Game is ready. Initiating Fractal authentication.');
-            authenticate();
+        var playerDelegate = { 
+          onGameCenterLogin: function () {
+            console.log('Game Service Login triggered. Starting Fractal authentication...');
+            return new Promise((resolve, reject) => {
+              Fractal.init({
+                clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
+                scopes: ['identify', 'coins:read', 'items:read'],
+                onAuthSuccess: function (token) {
+                  console.log('Authenticated successfully:', token);
+                  resolve();
+                },
+                onAuthFailure: function (error) {
+                  console.error('Authentication failed:', error);
+                  reject(error);
+                }
+              });
+              Fractal.authenticate();
+            });
           },
-          onLoginSuccess: function (token) {
-            console.log('Authenticated successfully:', token);
-            getUserWallet(token);
+
+          onLoadingBegin: function () {
+            engine.showOverlay();
+            document.getElementById('gse-loading').style.visibility = 'visible';
           },
-          onLoginFailure: function (error) {
-            console.error('Authentication failed:', error);
+
+          onLoadingEnd: function () {
+            document.getElementById('gse-loading').style.visibility = 'hidden';
+            engine.hideOverlay();
+          },
+
+          onGameReady: function (width, height) {
+            console.log('Game is ready');
+          },
+
+          onWindowResize: function () {
+            engine.relayout();
           }
         };
 
         engine.appendDelegate(playerDelegate);
-
-        // Additional event listeners for other game events can be added here
-        // Example:
-        // engine.addEventListener('sceneChanged', playerDelegate.onSceneChanged);
-      });
-    }
-
-    Fractal.init({
-      clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
-      scopes: ['identify', 'coins:read', 'items:read'],
-      onAuthSuccess: function (token) {
-        console.log('Authenticated successfully:', token);
-        // Use the token to access user data
-        getUserWallet(token);
-      },
-      onAuthFailure: function (error) {
-        console.error('Authentication failed:', error);
-      }
-    });
-
-    function authenticate() {
-      Fractal.authenticate();
-    }
-
-    function getUserWallet(token) {
-      Fractal.get('/wallet/coins', function (response) {
-        console.log('User wallet contents:', response);
+        window.addEventListener('resize', playerDelegate.onWindowResize, false);
       });
     }
   </script>
