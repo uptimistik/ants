@@ -78,7 +78,7 @@ body {
         onGameCenterLogin: function () {
           console.log('Game Service Login triggered. Starting Fractal authentication...');
           return new Promise((resolve, reject) => {
-            Fractal.onLoad(() => {
+            Fractal.onLoad(() => { // Ensures SDK is loaded before initialization
               Fractal.init({
                 clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
                 scopes: ['identify', 'coins:read', 'items:read'],
