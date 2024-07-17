@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>GameSalad Integration</title>
+<title>GameSalad Game</title>
 <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
 <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
 <style type="text/css">
@@ -13,8 +13,8 @@ body {
   padding: 0;
 }
 </style>
-<!-- Add Fractal SDK Script -->
-<script src="https://example.com/path/to/fractal/sdk.js"></script>
+<!-- Include the Fractal SDK script -->
+<script src="https://cdn.fractal.is/sdk/fractal-sdk.js"></script>
 </head>
 <body>
 <div id="gse-player" class="gse-frame">
@@ -31,23 +31,35 @@ body {
     </div>
     <div id="gse-browser" class="gse-dialog">     
       <iframe id="gse-browser-frame"></iframe>
-        <button id="gse-browser-close" href="#">&#10006;</button>
+      <button id="gse-browser-close" href="#">&#10006;</button>
     </div>
     <div id="gse-loading" style="visibility: visible;">
       <img src="images/gse-loading.png" />
     </div>
   </div>
 </div>
+
 <script type="text/javascript">
 (function(global) {
   global.onEngineLoad = function() {
     gse.ready(function(engine) {
-      // Define the player delegate with Fractal integration
+      var loadingElement = document.getElementById('gse-loading');
       var playerDelegate = {
+        onLoadingBegin: function() {
+          engine.showOverlay();
+          loadingElement.style.visibility = 'visible';
+        },
+        onLoadingEnd: function() {
+          loadingElement.style.visibility = 'hidden';
+          engine.hideOverlay();
+        },
+        onWindowResize: function() {
+          engine.relayout();
+        },
         onGameCenterLogin: function () {
           console.log('Game Service Login triggered. Starting Fractal authentication...');
           return new Promise((resolve, reject) => {
-            Fractal.onLoad(() => { // Ensures SDK is loaded before initialization
+            Fractal.onLoad(() => {
               Fractal.init({
                 clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
                 scopes: ['identify', 'coins:read', 'items:read'],
@@ -81,20 +93,8 @@ body {
           Fractal.post('/leaderboard/score', { score: score }, function (response) {
             console.log('Score posted:', response);
           });
-        },
-        onLoadingBegin: function() {
-          engine.showOverlay();
-          loadingElement.style.visibility = 'visible';
-        },
-        onLoadingEnd: function() {
-          loadingElement.style.visibility = 'hidden';
-          engine.hideOverlay();
-        },
-        onWindowResize: function() {
-          engine.relayout();
         }
       };
-
       engine.appendDelegate(playerDelegate);
       window.addEventListener('resize', playerDelegate.onWindowResize, false);
 
@@ -109,7 +109,7 @@ body {
             gse.setGameVolume(engine, 0);
           else
             gse.setGameVolume(engine, 1);
-        };
+        }
       }
 
       engine.setRenderFrame('gse-player');
@@ -118,11 +118,10 @@ body {
         'viewport-fit': 'letterbox'
       });
       engine.loadOptionsFromURL();
-
       engine.play();
     });
   };
-}(window));
+})(window);
 </script>
 <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
