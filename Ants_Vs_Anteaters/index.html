@@ -18,7 +18,6 @@
 
 <body>
   <div id="gse-player" class="gse-frame">
-    <!-- The engine will create and insert drawing elements here. -->
     <div class="gse-overlay">
       <div id="gse-text" class="gse-dialog">
         <div>
@@ -50,6 +49,24 @@
         tables: {},
         attributes: {}
       };
+
+      function startGame(engine) {
+        engine.setRenderFrame('gse-player');
+        engine.setOptions({
+          'viewport-reference': 'window',
+          'viewport-fit': 'letterbox'
+        });
+        engine.loadOptionsFromURL();
+        engine.load();
+      }
+
+      function onUserGesture() {
+        var event = new Event('user-gesture');
+        document.dispatchEvent(event);
+      }
+
+      document.addEventListener('click', onUserGesture, { once: true });
+      document.addEventListener('keypress', onUserGesture, { once: true });
 
       global.onEngineLoad = function () {
         gse.ready(function (engine) {
@@ -106,19 +123,16 @@
           engine.appendDelegate(playerDelegate);
           window.addEventListener('resize', playerDelegate.onWindowResize, false);
 
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
-          });
-          engine.loadOptionsFromURL();
-          engine.load();
+          // Start the game on user gesture to allow audio context to start
+          document.addEventListener('user-gesture', function () {
+            startGame(engine);
+          }, { once: true });
         });
       };
     }(window));
   </script>
   <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
-  <script type="text/javascript" src="https://cdn.fractal.is/sdk/fractal-sdk.js"></script>
+  <script type="text/javascript" src="https://cdn.fractal.is/sdk/fractal-sdk.js" async defer></script>
 </body>
 
 </html>
