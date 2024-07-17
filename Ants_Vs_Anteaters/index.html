@@ -82,6 +82,7 @@ body {
               Fractal.init({
                 clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
                 scopes: ['identify', 'coins:read', 'items:read'],
+                redirectUri: 'https://uptimistik.github.io/ants/Ants_Vs_Anteaters/', // Adding the return URI
                 onAuthSuccess: function (token) {
                   console.log('Authenticated successfully:', token);
                   resolve();
