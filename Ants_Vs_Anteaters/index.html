@@ -51,12 +51,6 @@ body {
     gse.ready(function(engine) {
       var loadingElement = document.getElementById('gse-loading');
 
-      // Ensure Fractal SDK is loaded before setting up the delegates
-      if (typeof Fractal === 'undefined') {
-        console.error('Fractal SDK is not loaded. Please check the SDK URL.');
-        return;
-      }
-
       var playerDelegate = {
         onLoadingBegin: function() {
           engine.showOverlay();
@@ -84,19 +78,21 @@ body {
         onGameCenterLogin: function () {
           console.log('Game Service Login triggered. Starting Fractal authentication...');
           return new Promise((resolve, reject) => {
-            Fractal.init({
-              clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
-              scopes: ['identify', 'coins:read', 'items:read'],
-              onAuthSuccess: function (token) {
-                console.log('Authenticated successfully:', token);
-                resolve();
-              },
-              onAuthFailure: function (error) {
-                console.error('Authentication failed:', error);
-                reject(error);
-              }
+            Fractal.onLoad(() => {
+              Fractal.init({
+                clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
+                scopes: ['identify', 'coins:read', 'items:read'],
+                onAuthSuccess: function (token) {
+                  console.log('Authenticated successfully:', token);
+                  resolve();
+                },
+                onAuthFailure: function (error) {
+                  console.error('Authentication failed:', error);
+                  reject(error);
+                }
+              });
+              Fractal.authenticate();
             });
-            Fractal.authenticate();
           });
         },
 
