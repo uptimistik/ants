@@ -3,126 +3,155 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>GameSalad Game</title>
+<title>GameSalad Integration with Fractal Leaderboard</title>
 <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
 <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
 <style type="text/css">
 body {
-  background-color: black;
-  margin: 0;
-  padding: 0;
+    background-color: black;
+    margin: 0;
+    padding: 0;
+}
+#leaderboard {
+    color: white;
+    margin-top: 20px;
 }
 </style>
-<!-- Include the Fractal SDK script -->
-<script src="https://cdn.fractal.is/sdk/fractal-sdk.js"></script>
 </head>
 <body>
 <div id="gse-player" class="gse-frame">
-  <div class="gse-overlay">
-    <div id="gse-text" class="gse-dialog">
-      <div>
-        <button id="gse-text-cancel">Cancel</button>
-        <button id="gse-text-done">Done</button>
-        <p id="gse-text-prompt"></p>
-      </div>
-      <div>
-        <textarea id="gse-text-input"></textarea>
-      </div>
+    <div class="gse-overlay">
+        <div id="gse-text" class="gse-dialog">
+            <div>
+                <button id="gse-text-cancel">Cancel</button>
+                <button id="gse-text-done">Done</button>
+                <p id="gse-text-prompt"></p>
+            </div>
+            <div>
+                <textarea id="gse-text-input"></textarea>
+            </div>
+        </div>
+        <div id="gse-browser" class="gse-dialog">            
+            <iframe id="gse-browser-frame"></iframe>
+                <button id="gse-browser-close" href="#">&#10006;</button>
+        </div>
+        <div id="gse-loading" style="visibility: visible;">
+            <img src="images/gse-loading.png" />
+        </div>
     </div>
-    <div id="gse-browser" class="gse-dialog">     
-      <iframe id="gse-browser-frame"></iframe>
-      <button id="gse-browser-close" href="#">&#10006;</button>
-    </div>
-    <div id="gse-loading" style="visibility: visible;">
-      <img src="images/gse-loading.png" />
-    </div>
-  </div>
+</div>
+
+<!-- Leaderboard container -->
+<div id="leaderboard">
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard-list"></ul>
 </div>
 
 <script type="text/javascript">
 (function(global) {
-  global.onEngineLoad = function() {
-    gse.ready(function(engine) {
-      var loadingElement = document.getElementById('gse-loading');
-      var playerDelegate = {
-        onLoadingBegin: function() {
-          engine.showOverlay();
-          loadingElement.style.visibility = 'visible';
-        },
-        onLoadingEnd: function() {
-          loadingElement.style.visibility = 'hidden';
-          engine.hideOverlay();
-        },
-        onWindowResize: function() {
-          engine.relayout();
-        },
-        onGameCenterLogin: function () {
-          console.log('Game Service Login triggered. Starting Fractal authentication...');
-          return new Promise((resolve, reject) => {
-            Fractal.onLoad(() => {
-              Fractal.init({
-                clientId: 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P',
-                scopes: ['identify', 'coins:read', 'items:read'],
-                onAuthSuccess: function (token) {
-                  console.log('Authenticated successfully:', token);
-                  resolve();
+    const clientId = 'AL1szGybA0YVtyC5Jk5w3z6hBPCPvy6P';
+    const clientSecret = 'PxkK_3u7n9Zn89wYxGjUEo-iZBxulnTVmepU-DfYAisraw_LkCC9fj1cS4scPUm4';
+
+    async function authenticate() {
+        const response = await fetch('https://fractal.is/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                client_secret: clientSecret,
+                grant_type: 'client_credentials'
+            })
+        });
+        const data = await response.json();
+        return data.access_token;
+    }
+
+    async function postScore(token, score) {
+        const response = await fetch('https://fractal.is/api/leaderboard', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ score: score })
+        });
+        const data = await response.json();
+        return data;
+    }
+
+    async function fetchLeaderboard(token) {
+        const response = await fetch('https://fractal.is/api/leaderboard', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        return data.leaderboard;
+    }
+
+    function displayLeaderboard(leaderboard) {
+        const leaderboardList = document.getElementById('leaderboard-list');
+        leaderboardList.innerHTML = '';
+        leaderboard.forEach(entry => {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${entry.rank}: ${entry.username} - ${entry.score}`;
+            leaderboardList.appendChild(listItem);
+        });
+    }
+
+    async function handleGameCenterLogin(engine) {
+        const token = await authenticate();
+        engine.postEvent('externalWriteGameAttribute', null, 'game.attributes.id151950', 1); // Wallet logged in
+        return token;
+    }
+
+    global.onEngineLoad = function() {
+        gse.ready(function(engine) {
+            var loadingElement = document.getElementById('gse-loading');
+            var playerDelegate = {
+                onLoadingBegin: function() {
+                    engine.showOverlay();
+                    loadingElement.style.visibility = 'visible';
                 },
-                onAuthFailure: function (error) {
-                  console.error('Authentication failed:', error);
-                  reject(error);
+                onLoadingEnd: function() {
+                    loadingElement.style.visibility = 'hidden';
+                    engine.hideOverlay();
+                },
+                onWindowResize: function() {
+                    engine.relayout();
+                },
+                onGameCenterLogin: async function() {
+                    const token = await handleGameCenterLogin(engine);
+                    return token;
+                },
+                onGameCenterPostScore: async function(score) {
+                    const token = await handleGameCenterLogin(engine);
+                    await postScore(token, score);
+                },
+                onGameCenterShowLeaderboard: async function() {
+                    const token = await handleGameCenterLogin(engine);
+                    const leaderboard = await fetchLeaderboard(token);
+                    displayLeaderboard(leaderboard);
                 }
-              });
-              Fractal.authenticate();
-            });
-          });
-        },
-        onGameCenterShowLeaderboard: function () {
-          console.log('Show Leaderboard');
-          Fractal.get('/leaderboard', function (response) {
-            console.log('Leaderboard:', response);
-            let leaderboardHtml = '<div class="leaderboard"><h2>Leaderboard</h2><ul>';
-            response.data.forEach(item => {
-              leaderboardHtml += `<li>${item.username}: ${item.score}</li>`;
-            });
-            leaderboardHtml += '</ul></div>';
-            document.body.innerHTML += leaderboardHtml;
-          });
-        },
-        onGameCenterPostScore: function (score, leaderboard) {
-          console.log('Posting score:', score);
-          Fractal.post('/leaderboard/score', { score: score }, function (response) {
-            console.log('Score posted:', response);
-          });
-        }
-      };
-      engine.appendDelegate(playerDelegate);
-      window.addEventListener('resize', playerDelegate.onWindowResize, false);
+            };
+            engine.appendDelegate(playerDelegate);
+            window.addEventListener('resize', playerDelegate.onWindowResize, false);
 
-      var MUTE_ON_HIDDEN = false;
-      if (MUTE_ON_HIDDEN) {
-        document.addEventListener("visibilitychange", onVisibilityChanged, false);
-        document.addEventListener("mozvisibilitychange", onVisibilityChanged, false);
-        document.addEventListener("webkitvisibilitychange", onVisibilityChanged, false);
-        document.addEventListener("msvisibilitychange", onVisibilityChanged, false);
-        function onVisibilityChanged() {
-          if (document.hidden || document.mozHidden || document.webkitHidden || document.msHidden)
-            gse.setGameVolume(engine, 0);
-          else
-            gse.setGameVolume(engine, 1);
-        }
-      }
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+                'viewport-reference': 'window',
+                'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+            engine.play();
+        });
+    };
 
-      engine.setRenderFrame('gse-player');
-      engine.setOptions({
-        'viewport-reference': 'window',
-        'viewport-fit': 'letterbox'
-      });
-      engine.loadOptionsFromURL();
-      engine.play();
-    });
-  };
-})(window);
+}(window));
 </script>
+
 <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
