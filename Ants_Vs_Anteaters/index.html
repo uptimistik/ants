@@ -2,8 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Game with Firebase Leaderboard</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>My Game</title>
   <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
   <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
   <style type="text/css">
@@ -12,30 +12,41 @@
       margin: 0;
       padding: 0;
     }
-    #log {
-      color: white;
-      background: rgba(0, 0, 0, 0.8);
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 10px;
-      max-height: 200px;
-      overflow-y: scroll;
-      z-index: 1000;
-    }
-    #end-game-overlay {
-      display: none;
-      color: white;
-      background: rgba(0, 0, 0, 0.8);
-      position: absolute;
+    #username-overlay {
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      text-align: center;
-      padding: 20px;
-      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
       z-index: 1000;
+    }
+    #username-form {
+      background: #333;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    #username-form input {
+      margin: 10px 0;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+    }
+    #username-form button {
+      padding: 10px 20px;
+      border: none;
+      background: #28a745;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #username-form button:disabled {
+      background: #ccc;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
@@ -43,32 +54,21 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div id="gse-player" class="gse-frame">
-    <div class="gse-overlay">
-      <div id="gse-text" class="gse-dialog">
-        <div>
-          <button id="gse-text-cancel">Cancel</button>
-          <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt">Enter Username:</p>
-        </div>
-        <div>
-          <textarea id="gse-text-input" placeholder="Enter your username"></textarea>
-        </div>
-      </div>
-      <div id="gse-loading" style="visibility: visible;">
-        <img src="images/gse-loading.png" />
-      </div>
+  <!-- Username Overlay -->
+  <div id="username-overlay">
+    <div id="username-form">
+      <h2>Enter Your Username</h2>
+      <input type="text" id="username-input" placeholder="Enter username" />
+      <button id="submit-username">Submit</button>
+      <p id="error-message" style="color: red; display: none;">Username is required!</p>
     </div>
   </div>
 
-  <div id="end-game-overlay">
-    <h2>Ants Leaderboards</h2>
-    <div id="top-players"></div>
-    <div id="current-position"></div>
-  </div>
+  <div id="gse-player" class="gse-frame"></div>
 
   <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Firebase
       const firebaseConfig = {
         apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
         authDomain: "antsgame-204c1.firebaseapp.com",
@@ -79,145 +79,76 @@
         appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
         measurementId: "G-E0JEEGY1GR"
       };
-
       firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
 
-      let playerId = null;
-      let playerName = 'Unknown';
-
-      function generateUniqueId() {
-        return 'xxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      }
+      let userId = null;
+      let playerName = null;
 
       function showUsernameOverlay() {
-        document.getElementById('gse-text').style.display = 'block';
+        document.getElementById('username-overlay').style.display = 'flex';
       }
 
       function hideUsernameOverlay() {
-        document.getElementById('gse-text').style.display = 'none';
+        document.getElementById('username-overlay').style.display = 'none';
       }
 
-      function checkUser() {
-        const userId = window.localStorage.getItem('playerId');
-        if (userId) {
-          playerId = userId;
-          database.ref(`players/${playerId}`).once('value').then(snapshot => {
-            if (snapshot.exists()) {
-              playerName = snapshot.val().username;
-              hideUsernameOverlay();
-              startGame();
-            } else {
-              showUsernameOverlay();
-            }
-          });
-        } else {
-          showUsernameOverlay();
-        }
-      }
-
-      function saveUsername(username) {
-        if (!username) return;
-        playerId = generateUniqueId();
-        window.localStorage.setItem('playerId', playerId);
-        database.ref(`players/${playerId}`).set({ username: username })
-          .then(() => {
-            playerName = username;
-            hideUsernameOverlay();
-            startGame();
-          })
-          .catch(error => console.error('Error saving username:', error));
-      }
-
-      function startGame() {
-        console.log('Starting game for', playerName);
+      function saveUserToFirebase(userId, username) {
+        database.ref('users/' + userId).set({
+          username: username
+        });
       }
 
       function saveScoreToFirebase(score) {
-        if (!playerName || playerName === 'Unknown') {
-          console.error('Failed to retrieve username');
+        if (!playerName) {
+          console.error('Username is required before saving score');
           return;
         }
-
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
         newScoreRef.set({
-          id: playerId,
           name: playerName,
           score: score
         });
       }
 
-      function loadLeaderboard() {
-        const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
-        scoresRef.once('value', (snapshot) => {
-          const scores = [];
-          snapshot.forEach((childSnapshot) => {
-            scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
-          });
-          displayLeaderboard(scores);
+      function initializeGame() {
+        window.Telegram.WebApp.ready(() => {
+          const user = window.Telegram.WebApp.initDataUnsafe.user;
+          if (user && user.id) {
+            userId = user.id;
+            database.ref('users/' + userId).once('value').then(snapshot => {
+              const userData = snapshot.val();
+              if (userData && userData.username) {
+                playerName = userData.username;
+                hideUsernameOverlay();
+                // Proceed to game
+              } else {
+                showUsernameOverlay();
+              }
+            });
+          } else {
+            showUsernameOverlay();
+          }
         });
       }
 
-      function displayLeaderboard(scores) {
-        const leaderboardElement = document.getElementById('top-players');
-        if (leaderboardElement) {
-          leaderboardElement.innerHTML = '';
-          scores.forEach((entry) => {
-            const entryElement = document.createElement('div');
-            entryElement.textContent = `${entry.name}: Total Kills: ${entry.score}`;
-            leaderboardElement.appendChild(entryElement);
-          });
-
-          // Check current player position
-          const currentPositionElement = document.getElementById('current-position');
-          const currentPlayerScore = scores.find(score => score.id === playerId);
-          if (currentPlayerScore) {
-            currentPositionElement.textContent = `Your Position: ${scores.indexOf(currentPlayerScore) + 1}`;
-          } else {
-            currentPositionElement.textContent = 'You are not in the top 10';
-          }
-
-          document.getElementById('end-game-overlay').style.display = 'block';
+      document.getElementById('submit-username').addEventListener('click', function() {
+        const usernameInput = document.getElementById('username-input');
+        const username = usernameInput.value.trim();
+        if (username) {
+          saveUserToFirebase(userId, username);
+          playerName = username;
+          hideUsernameOverlay();
+          // Proceed to game
         } else {
-          console.error('Leaderboard element not found.');
+          document.getElementById('error-message').style.display = 'block';
         }
-      }
+      });
 
       window.onEngineLoad = function() {
         gse.ready(function(engine) {
-          const loadingElement = document.getElementById('gse-loading');
-
-          var playerDelegate = {
-            onGameCenterPostScore: function(score, leaderboard) {
-              saveScoreToFirebase(score);
-            },
-            onGameCenterShowLeaderboard: function(identifier) {
-              loadLeaderboard(); // Load and display the leaderboard when the delegate is triggered
-            },
-            onLoadingBegin: function() {
-              engine.showOverlay();
-              loadingElement.style.visibility = 'visible';
-            },
-            onLoadingEnd: function() {
-              loadingElement.style.visibility = 'hidden';
-              engine.hideOverlay();
-            },
-            onGameReady: function() {
-              // Load and display the leaderboard when the game is ready
-              loadLeaderboard();
-            },
-            onWindowResize: function() {
-              engine.relayout();
-            }
-          };
-
-          engine.appendDelegate(playerDelegate);
-          window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
+          // Engine setup
           engine.setRenderFrame('gse-player');
           engine.setOptions({
             'viewport-reference': 'window',
@@ -225,10 +156,13 @@
           });
           engine.loadOptionsFromURL();
           engine.play();
-
-          checkUser(); // Check if user already exists
+          initializeGame();
         });
       };
+
+      document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('touchend', function(e) { e.preventDefault(); }, { passive: false });
     });
   </script>
   <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
