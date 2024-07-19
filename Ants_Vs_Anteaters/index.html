@@ -4,14 +4,30 @@
   <meta charset="utf-8" />
   <title>Telegram Mini App Test</title>
   <script src="https://telegram.org/js/telegram-mini-app.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    #log {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+  </style>
 </head>
 <body>
   <h1>Telegram Mini App Test</h1>
-  <div id="user-info">Loading...</div>
+  <div id="log">Loading...</div>
   <script>
     function log(message) {
       console.log(message);
-      const logElement = document.getElementById('user-info');
+      const logElement = document.getElementById('log');
       logElement.innerHTML += '<p>' + message + '</p>';
     }
 
@@ -28,16 +44,11 @@
       tg.ready(function() {
         log("Telegram SDK ready.");
 
-        try {
-          log("Telegram initData: " + tg.initData);
-          log("Telegram initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe));
-        } catch (e) {
-          log("Error accessing initData: " + e.message);
-        }
-
+        // Test user information
         const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
         if (user) {
           log("Telegram User ID: " + user.id);
+          log("Telegram Username: " + user.username);
         } else {
           log("Telegram user information is not available.");
         }
