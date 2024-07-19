@@ -12,36 +12,57 @@
       margin: 0;
       padding: 0;
     }
-    #log {
-      color: white;
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: rgba(0, 0, 0, 0.8);
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 10px;
-      max-height: 200px;
-      overflow-y: scroll;
+      justify-content: center;
+      align-items: center;
+      color: white;
       z-index: 1000;
     }
-    #score-form {
-      color: white;
-      background: rgba(0, 0, 0, 0.8);
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 10px;
-      z-index: 1000;
+    #username-form {
+      text-align: center;
     }
-    #score-form input, #score-form button {
-      margin-top: 5px;
+    #username-form input {
+      font-size: 20px;
+      padding: 10px;
+    }
+    #username-form button {
+      font-size: 20px;
+      padding: 10px;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
+
 <body>
+  <div id="overlay">
+    <div id="username-form">
+      <p>Enter your username:</p>
+      <input type="text" id="username-input" placeholder="Username" />
+      <button id="submit-username">Submit</button>
+    </div>
+  </div>
+
   <div id="gse-player" class="gse-frame">
     <div class="gse-overlay">
+      <div id="gse-text" class="gse-dialog">
+        <div>
+          <button id="gse-text-cancel">Cancel</button>
+          <button id="gse-text-done">Done</button>
+          <p id="gse-text-prompt"></p>
+        </div>
+        <div>
+          <textarea id="gse-text-input"></textarea>
+        </div>
+      </div>
       <div id="gse-loading" style="visibility: visible;">
         <img src="images/gse-loading.png" />
       </div>
@@ -49,13 +70,6 @@
   </div>
 
   <div id="leaderboard"></div>
-
-  <div id="score-form">
-    <p>Enter Username and Score</p>
-    <input type="text" id="username-input" placeholder="Username" />
-    <input type="number" id="score-input" placeholder="Score" />
-    <button id="submit-score">Submit Score</button>
-  </div>
 
   <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function() {
@@ -73,8 +87,29 @@
       firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
 
-      function saveScoreToFirebase(userName, score) {
-        if (!userName || userName.trim() === '') {
+      let playerName = localStorage.getItem('playerName') || 'Unknown';
+
+      function showOverlay() {
+        document.getElementById('overlay').style.display = 'flex';
+      }
+
+      function hideOverlay() {
+        document.getElementById('overlay').style.display = 'none';
+      }
+
+      document.getElementById('submit-username').addEventListener('click', function() {
+        const usernameInput = document.getElementById('username-input').value.trim();
+        if (usernameInput) {
+          playerName = usernameInput;
+          localStorage.setItem('playerName', playerName);
+          hideOverlay();
+        } else {
+          alert('Please enter a valid username.');
+        }
+      });
+
+      function saveScoreToFirebase(score) {
+        if (!playerName || playerName === 'Unknown') {
           console.error('Failed to retrieve username');
           return;
         }
@@ -82,21 +117,10 @@
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
         newScoreRef.set({
-          name: userName,
+          name: playerName,
           score: score
         });
       }
-
-      document.getElementById('submit-score').addEventListener('click', function() {
-        const username = document.getElementById('username-input').value.trim();
-        const score = parseInt(document.getElementById('score-input').value, 10);
-
-        if (!isNaN(score) && username) {
-          saveScoreToFirebase(username, score);
-        } else {
-          console.error('Invalid score or username');
-        }
-      });
 
       function loadLeaderboard() {
         const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
@@ -128,6 +152,9 @@
           const loadingElement = document.getElementById('gse-loading');
 
           var playerDelegate = {
+            onGameCenterPostScore: function(score) {
+              saveScoreToFirebase(score);
+            },
             onLoadingBegin: function() {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
@@ -156,6 +183,11 @@
           engine.play();
         });
       };
+
+      // Show the overlay if the playerName is not set
+      if (playerName === 'Unknown') {
+        showOverlay();
+      }
     });
   </script>
 
