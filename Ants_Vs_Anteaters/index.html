@@ -1,56 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>Leaderboard</title>
-<style type="text/css">
-body {
-    background-color: black;
-    color: white;
-    margin: 0;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-}
-#leaderboard {
-    list-style-type: none;
-    padding: 0;
-}
-#leaderboard li {
-    background: rgba(255, 255, 255, 0.2);
-    margin: 5px 0;
-    padding: 10px;
-    border-radius: 5px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game with Firebase Leaderboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<h1>Leaderboard</h1>
-<ul id="leaderboard"></ul>
-
-<script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-    function fetchLeaderboard() {
-        // Simulate fetching leaderboard data
-        return [
-            { name: 'Player 1', score: 1200 },
-            { name: 'Player 2', score: 900 },
-            { name: 'Player 3', score: 700 }
-        ];
-    }
-
-    function displayLeaderboard(data) {
-        const leaderboard = document.getElementById('leaderboard');
-        data.forEach(function(entry) {
-            const listItem = document.createElement('li');
-            listItem.textContent = `${entry.name}: ${entry.score}`;
-            leaderboard.appendChild(listItem);
-        });
-    }
-
-    const leaderboardData = fetchLeaderboard();
-    displayLeaderboard(leaderboardData);
-});
-</script>
+    <div id="username-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Enter Username</h2>
+            <input type="text" id="username-input" placeholder="Username">
+            <button id="submit-username">Submit</button>
+            <p id="error-message" class="error-message"></p>
+        </div>
+    </div>
+    <div id="gse-player" class="gse-frame"></div>
+    <div id="leaderboard"></div>
+    <div id="endgame-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Ants Leaderboards</h2>
+            <div id="top-players"></div>
+            <p id="current-position"></p>
+        </div>
+    </div>
+    <script src="game.js"></script>
 </body>
 </html>
