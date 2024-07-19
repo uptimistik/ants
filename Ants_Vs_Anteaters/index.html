@@ -75,8 +75,9 @@
       // Initialize Telegram Web App and get user info
       window.Telegram.WebApp.ready(() => {
         const user = window.Telegram.WebApp.initDataUnsafe.user;
-        playerName = user ? (user.username || user.first_name || 'Unknown') : 'Unknown';
-
+        if (user) {
+          playerName = user.username || user.first_name || 'Unknown';
+        }
         console.log('User Info:', user); // Log the user object for debugging
         console.log('Player Name:', playerName); // Log the player name to verify
       });
@@ -126,8 +127,8 @@
 
           var playerDelegate = {
             onGameCenterPostScore: function(score, leaderboard) {
-              // Use the dynamically retrieved Telegram username
-              console.log('Posting score for:', playerName); // Log the player name when posting score
+              // Check and log playerName before posting score
+              console.log('Attempting to post score for:', playerName);
               saveScoreToFirebase(playerName, score);
             },
             onLoadingBegin: function() {
