@@ -1,56 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>Leaderboard</title>
-<style type="text/css">
-body {
-    background-color: black;
-    color: white;
-    margin: 0;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-}
-#leaderboard {
-    list-style-type: none;
-    padding: 0;
-}
-#leaderboard li {
-    background: rgba(255, 255, 255, 0.2);
-    margin: 5px 0;
-    padding: 10px;
-    border-radius: 5px;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    #leaderboard {
+      list-style-type: none;
+      padding: 0;
+    }
+    #leaderboard li {
+      background: rgba(255, 255, 255, 0.2);
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #save-score-form {
+      margin-top: 20px;
+    }
+    #save-score-form input {
+      padding: 10px;
+      margin-right: 10px;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
-<h1>Leaderboard</h1>
-<ul id="leaderboard"></ul>
+  <h1>Leaderboard</h1>
+  <ul id="leaderboard"></ul>
 
-<script type="text/javascript">
-document.addEventListener('DOMContentLoaded', function() {
-    function fetchLeaderboard() {
-        // Simulate fetching leaderboard data
-        return [
-            { name: 'Player 1', score: 1200 },
-            { name: 'Player 2', score: 900 },
-            { name: 'Player 3', score: 700 }
-        ];
+  <div id="save-score-form">
+    <input type="text" id="userId" placeholder="User ID" />
+    <input type="number" id="score" placeholder="Score" />
+    <button onclick="submitScore()">Submit Score</button>
+  </div>
+
+  <!-- Add Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database.js"></script>
+
+  <!-- Your Firebase configuration -->
+  <script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
+      authDomain: "antsgame-204c1.firebaseapp.com",
+      databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
+      projectId: "antsgame-204c1",
+      storageBucket: "antsgame-204c1.appspot.com",
+      messagingSenderId: "580715522171",
+      appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
+      measurementId: "G-E0JEEGY1GR"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Function to save score to the database
+    function saveScore(userId, score) {
+      const scoresRef = database.ref('scores/' + userId);
+      scoresRef.set({
+        userId: userId,
+        score: score
+      }).then(() => {
+        console.log('Score saved successfully');
+      }).catch((error) => {
+        console.error('Error saving score:', error);
+      });
     }
 
+    // Function to fetch leaderboard from the database
+    async function fetchLeaderboard() {
+      const dbRef = database.ref('scores');
+      try {
+        const snapshot = await dbRef.once('value');
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const leaderboard = Object.values(data).sort((a, b) => b.score - a.score);
+          displayLeaderboard(leaderboard);
+        } else {
+          console.log('No data available');
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+    }
+
+    // Function to display leaderboard
     function displayLeaderboard(data) {
-        const leaderboard = document.getElementById('leaderboard');
-        data.forEach(function(entry) {
-            const listItem = document.createElement('li');
-            listItem.textContent = `${entry.name}: ${entry.score}`;
-            leaderboard.appendChild(listItem);
-        });
+      const leaderboard = document.getElementById('leaderboard');
+      leaderboard.innerHTML = ''; // Clear existing leaderboard
+      data.forEach(entry => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${entry.userId}: ${entry.score}`;
+        leaderboard.appendChild(listItem);
+      });
     }
 
-    const leaderboardData = fetchLeaderboard();
-    displayLeaderboard(leaderboardData);
-});
-</script>
+    // Function to handle score submission
+    function submitScore() {
+      const userId = document.getElementById('userId').value;
+      const score = parseInt(document.getElementById('score').value, 10);
+
+      if (userId && !isNaN(score)) {
+        saveScore(userId, score);
+        fetchLeaderboard();
+      } else {
+        alert('Please enter a valid User ID and Score.');
+      }
+    }
+
+    // Fetch and display leaderboard on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchLeaderboard();
+    });
+  </script>
 </body>
 </html>
