@@ -1,9 +1,9 @@
 body {
     background-color: black;
-    margin: 0;
-    padding: 0;
     color: white;
     font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
 }
 
 .overlay {
@@ -53,7 +53,7 @@ button:hover {
 }
 
 #gse-player {
-    display: none; /* Hidden initially, shown when game starts */
+    display: none; /* Hidden until the game starts */
 }
 
 #top-players {

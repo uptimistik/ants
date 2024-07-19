@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startGame() {
-        // Your game initialization code here
         console.log('Game starting...');
+        document.getElementById('gse-player').style.display = 'block'; // Show game element
     }
 
     function saveScoreToFirebase(score) {
