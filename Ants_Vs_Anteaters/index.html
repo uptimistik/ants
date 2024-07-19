@@ -1,111 +1,113 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<meta charset="utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>GameSalad Telegram Integration</title>
-<link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-<link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
-<style type="text/css">
-body {
-	background-color: black;
-	margin: 0;
-	padding: 0;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>GameSalad Telegram Integration</title>
+  <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
+  <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
+  <style type="text/css">
+    body {
+      background-color: black;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
+
 <body>
-<div id="gse-player" class="gse-frame">
-	<div class="gse-overlay">
-		<div id="gse-text" class="gse-dialog">
-			<div>
-				<button id="gse-text-cancel">Cancel</button>
-				<button id="gse-text-done">Done</button>
-				<p id="gse-text-prompt"></p>
-			</div>
-			<div>
-				<textarea id="gse-text-input"></textarea>
-			</div>
-		</div>
-		<div id="gse-browser" class="gse-dialog">			
-			<iframe id="gse-browser-frame"></iframe>
-				<button id="gse-browser-close" href="#">&#10006;</button>
-		</div>
-		<div id="gse-loading" style="visibility: visible;">
-			<img src="images/gse-loading.png" />
-		</div>
-	</div>
-</div>
+  <div id="gse-player" class="gse-frame">
+    <div class="gse-overlay">
+      <div id="gse-text" class="gse-dialog">
+        <div>
+          <button id="gse-text-cancel">Cancel</button>
+          <button id="gse-text-done">Done</button>
+          <p id="gse-text-prompt"></p>
+        </div>
+        <div>
+          <textarea id="gse-text-input"></textarea>
+        </div>
+      </div>
+      <div id="gse-loading" style="visibility: visible;">
+        <img src="images/gse-loading.png" />
+      </div>
+    </div>
+  </div>
 
-<script type="text/javascript">
-(function(global) {
+  <script type="text/javascript">
+    (function(global) {
+      global.onEngineLoad = function() {
+        gse.ready(function(engine) {
+          var loadingElement = document.getElementById('gse-loading');
 
-	global.onEngineLoad = function() {
-		gse.ready(function(engine) {
-			var loadingElement = document.getElementById('gse-loading');
-			var playerDelegate = {
-				onLoadingBegin: function() {
-					engine.showOverlay();
-					loadingElement.style.visibility = 'visible';
-				},
-				onLoadingEnd: function() {
-					loadingElement.style.visibility = 'hidden';
-					engine.hideOverlay();
-				},
-				onWindowResize: function() {
-					engine.relayout();
-				},
-				onGameOver: function() {
-					var highScore = engine.getAttribute("game.attributes.id172942");
-					postHighScore(highScore);
-				}
-			};
-			engine.appendDelegate(playerDelegate);
-			window.addEventListener('resize', playerDelegate.onWindowResize, false);
+          var playerDelegate = {
+            onLoadingBegin: function() {
+              engine.showOverlay();
+              loadingElement.style.visibility = 'visible';
+            },
 
-			engine.setRenderFrame('gse-player');
-			engine.setOptions({
-				'viewport-reference': 'window',
-				'viewport-fit': 'letterbox'
-			});
-			engine.loadOptionsFromURL();
-			engine.play();
+            onLoadingEnd: function() {
+              loadingElement.style.visibility = 'hidden';
+              engine.hideOverlay();
+            },
 
-			// Initialize Telegram Web Apps SDK
-			const tg = window.Telegram.WebApp;
+            onWindowResize: function() {
+              engine.relayout();
+            },
 
-			// Ensure the SDK is ready and fetch user information
-			tg.ready(function() {
-				const user = tg.initDataUnsafe.user;
-				if (user) {
-					global.telegramUserId = user.id;
-				} else {
-					console.error("Telegram user information is not available.");
-				}
-			});
-		});
-	};
+            onGameCenterPostScore: function(score, leaderboard) {
+              postHighScore(score);
+            }
+          };
 
-	function postHighScore(score) {
-		const botToken = '7131340163:AAG1a1xtMmz46wvsXurUcYOQ37VZRFVGMtY';
-		const userId = window.telegramUserId; // Fetch the Telegram user ID dynamically
+          engine.appendDelegate(playerDelegate);
+          window.addEventListener('resize', playerDelegate.onWindowResize, false);
 
-		if (!userId) {
-			console.error("User ID is not available. Ensure the Telegram Web Apps API is initialized correctly.");
-			return;
-		}
+          engine.setRenderFrame('gse-player');
+          engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
+          });
+          engine.loadOptionsFromURL();
+          engine.play();
 
-		const url = `https://api.telegram.org/bot${botToken}/setGameScore?user_id=${userId}&score=${score}&force=true`;
+          // Initialize Telegram Web Apps SDK
+          const tg = window.Telegram.WebApp;
 
-		fetch(url)
-			.then(response => response.json())
-			.then(data => console.log('High score posted:', data))
-			.catch(error => console.error('Error posting high score:', error));
-	}
+          // Ensure the SDK is ready and fetch user information
+          tg.ready(function() {
+            const user = tg.initDataUnsafe.user;
+            if (user) {
+              global.telegramUserId = user.id;
+            } else {
+              console.error("Telegram user information is not available.");
+            }
+          });
+        });
+      };
 
-}(window));
-</script>
-<script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+      function postHighScore(score) {
+        const botToken = '7131340163:AAG1a1xtMmz46wvsXurUcYOQ37VZRFVGMtY';
+        const userId = window.telegramUserId;
+
+        if (!userId) {
+          console.error("User ID is not available. Ensure the Telegram Web Apps API is initialized correctly.");
+          return;
+        }
+
+        const url = `https://api.telegram.org/bot${botToken}/setGameScore?user_id=${userId}&score=${score}&force=true`;
+
+        fetch(url)
+          .then(response => response.json())
+          .then(data => console.log('High score posted:', data))
+          .catch(error => console.error('Error posting high score:', error));
+      }
+    }(window));
+  </script>
+
+  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
+
 </html>
