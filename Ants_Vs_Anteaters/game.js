@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function hideUsernameOverlay() {
         document.getElementById('username-overlay').style.display = 'none';
+        document.getElementById('gse-player').style.display = 'block';
     }
 
     function saveUsernameToFirebase(username) {
@@ -40,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startGame() {
-        // Game initialization code
+        // Your game initialization code here
         console.log('Game starting...');
     }
 
@@ -83,6 +84,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function checkUser() {
+        window.Telegram.WebApp.ready(() => {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            if (user && user.id) {
+                userId = user.id;
+                database.ref('users/' + userId).once('value').then(snapshot => {
+                    const userData = snapshot.val();
+                    if (userData && userData.username) {
+                        playerName = userData.username;
+                        hideUsernameOverlay();
+                        startGame();
+                    } else {
+                        showUsernameOverlay();
+                    }
+                }).catch(error => {
+                    console.error('Error retrieving user data:', error);
+                    showUsernameOverlay();
+                });
+            } else {
+                showUsernameOverlay();
+            }
+        });
+    }
+
     document.getElementById('submit-username').addEventListener('click', () => {
         const username = document.getElementById('username-input').value.trim();
         if (username) {
@@ -92,33 +117,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.Telegram.WebApp.ready(() => {
-        const user = window.Telegram.WebApp.initDataUnsafe.user;
-        if (user && user.id) {
-            userId = user.id;
-            database.ref('users/' + userId).once('value').then(snapshot => {
-                const userData = snapshot.val();
-                if (userData && userData.username) {
-                    playerName = userData.username;
-                    hideUsernameOverlay();
-                    startGame();
-                } else {
-                    showUsernameOverlay();
-                }
-            }).catch(error => {
-                console.error('Error retrieving user data:', error);
-                showUsernameOverlay();
-            });
-        } else {
-            showUsernameOverlay();
-        }
-    });
-
     function onGameCenterShowLeaderboard() {
         loadLeaderboard();
         document.getElementById('endgame-overlay').style.display = 'flex';
     }
 
-    // Example call
-    onGameCenterShowLeaderboard();
+    // Initialize check for user on load
+    checkUser();
 });
