@@ -144,6 +144,19 @@ window.onEngineLoad = function() {
             },
             onWindowResize: function() {
                 engine.relayout();
+            },
+            onGameCenterPostScore: function(score, leaderboard) {
+                ID.GameAPI.Leaderboards.save(
+                    {
+                        table: leaderboard,
+                        points: score,
+                        allowduplicates: false, // Set to true if players can submit more than one score.
+                        highest: true, // Set to false if a lower score is better.
+                    },
+                    function (data) {
+                        console.log('Leaderboard score posted:', data);
+                    }
+                );
             }
         };
 
