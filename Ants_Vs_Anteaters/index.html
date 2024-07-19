@@ -12,29 +12,39 @@
       margin: 0;
       padding: 0;
     }
-    #overlay {
-      display: none;
-      position: fixed;
+    #username-overlay {
+      position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
-      justify-content: center;
+      display: flex;
       align-items: center;
-      color: white;
+      justify-content: center;
       z-index: 1000;
     }
     #username-form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
       text-align: center;
     }
     #username-form input {
-      font-size: 20px;
+      margin-bottom: 10px;
       padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
     }
     #username-form button {
-      font-size: 20px;
       padding: 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #username-form button:disabled {
+      background: #9E9E9E;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
@@ -43,26 +53,16 @@
 </head>
 
 <body>
-  <div id="overlay">
+  <div id="username-overlay">
     <div id="username-form">
-      <p>Enter your username:</p>
-      <input type="text" id="username-input" placeholder="Username" />
-      <button id="submit-username">Submit</button>
+      <h2>Enter Username</h2>
+      <input type="text" id="username-input" placeholder="Enter your username" />
+      <button id="submit-button" disabled>Start Game</button>
     </div>
   </div>
 
-  <div id="gse-player" class="gse-frame">
+  <div id="gse-player" class="gse-frame" style="display: none;">
     <div class="gse-overlay">
-      <div id="gse-text" class="gse-dialog">
-        <div>
-          <button id="gse-text-cancel">Cancel</button>
-          <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt"></p>
-        </div>
-        <div>
-          <textarea id="gse-text-input"></textarea>
-        </div>
-      </div>
       <div id="gse-loading" style="visibility: visible;">
         <img src="images/gse-loading.png" />
       </div>
@@ -87,29 +87,74 @@
       firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
 
-      let playerName = localStorage.getItem('playerName') || 'Unknown';
+      let playerName = '';
 
-      function showOverlay() {
-        document.getElementById('overlay').style.display = 'flex';
-      }
-
-      function hideOverlay() {
-        document.getElementById('overlay').style.display = 'none';
-      }
-
-      document.getElementById('submit-username').addEventListener('click', function() {
-        const usernameInput = document.getElementById('username-input').value.trim();
-        if (usernameInput) {
-          playerName = usernameInput;
-          localStorage.setItem('playerName', playerName);
-          hideOverlay();
+      // Handle username submission
+      document.getElementById('submit-button').addEventListener('click', function() {
+        playerName = document.getElementById('username-input').value.trim();
+        if (playerName) {
+          document.getElementById('username-overlay').style.display = 'none';
+          document.getElementById('gse-player').style.display = 'block';
+          startGame();
         } else {
-          alert('Please enter a valid username.');
+          alert('Please enter a valid username');
         }
       });
 
+      document.getElementById('username-input').addEventListener('input', function() {
+        const username = this.value.trim();
+        document.getElementById('submit-button').disabled = !username;
+      });
+
+      function startGame() {
+        window.onEngineLoad = function() {
+          gse.ready(function(engine) {
+            const loadingElement = document.getElementById('gse-loading');
+
+            var playerDelegate = {
+              onGameCenterPostScore: function(score) {
+                saveScoreToFirebase(score);
+              },
+              onLoadingBegin: function() {
+                engine.showOverlay();
+                loadingElement.style.visibility = 'visible';
+              },
+              onLoadingEnd: function() {
+                loadingElement.style.visibility = 'hidden';
+                engine.hideOverlay();
+              },
+              onGameReady: function() {
+                loadLeaderboard(); // Load and display the leaderboard when the game is ready
+              },
+              onWindowResize: function() {
+                engine.relayout();
+              }
+            };
+
+            engine.appendDelegate(playerDelegate);
+            window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+              'viewport-reference': 'window',
+              'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+            engine.play();
+          });
+        };
+
+        // Load game engine script
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = 'js/gse/gse-export.js';
+        script.async = true;
+        script.onload = window.onEngineLoad;
+        document.body.appendChild(script);
+      }
+
       function saveScoreToFirebase(score) {
-        if (!playerName || playerName === 'Unknown') {
+        if (!playerName) {
           console.error('Failed to retrieve username');
           return;
         }
@@ -146,51 +191,7 @@
           console.error('Leaderboard element not found.');
         }
       }
-
-      window.onEngineLoad = function() {
-        gse.ready(function(engine) {
-          const loadingElement = document.getElementById('gse-loading');
-
-          var playerDelegate = {
-            onGameCenterPostScore: function(score) {
-              saveScoreToFirebase(score);
-            },
-            onLoadingBegin: function() {
-              engine.showOverlay();
-              loadingElement.style.visibility = 'visible';
-            },
-            onLoadingEnd: function() {
-              loadingElement.style.visibility = 'hidden';
-              engine.hideOverlay();
-            },
-            onGameReady: function() {
-              loadLeaderboard(); // Load and display the leaderboard when the game is ready
-            },
-            onWindowResize: function() {
-              engine.relayout();
-            }
-          };
-
-          engine.appendDelegate(playerDelegate);
-          window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
-          });
-          engine.loadOptionsFromURL();
-          engine.play();
-        });
-      };
-
-      // Show the overlay if the playerName is not set
-      if (playerName === 'Unknown') {
-        showOverlay();
-      }
     });
   </script>
-
-  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
