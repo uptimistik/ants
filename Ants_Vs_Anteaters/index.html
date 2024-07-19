@@ -57,6 +57,7 @@
             },
 
             onGameCenterPostScore: function(score, leaderboard) {
+              console.log("Score to post: ", score);
               postHighScore(score);
             }
           };
@@ -80,6 +81,7 @@
             const user = tg.initDataUnsafe.user;
             if (user) {
               global.telegramUserId = user.id;
+              console.log("Telegram User ID: ", global.telegramUserId);
             } else {
               console.error("Telegram user information is not available.");
             }
@@ -100,7 +102,14 @@
 
         fetch(url)
           .then(response => response.json())
-          .then(data => console.log('High score posted:', data))
+          .then(data => {
+            console.log('High score post response: ', data);
+            if (!data.ok) {
+              console.error('Error posting high score:', data.description);
+            } else {
+              console.log('High score posted successfully:', data.result);
+            }
+          })
           .catch(error => console.error('Error posting high score:', error));
       }
     }(window));
