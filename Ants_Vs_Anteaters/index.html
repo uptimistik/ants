@@ -63,7 +63,11 @@
 
       // Initialize Telegram Web App and get user info
       window.Telegram.WebApp.ready = function() {
-        playerName = window.Telegram.WebApp.initDataUnsafe.user.username || window.Telegram.WebApp.initDataUnsafe.user.first_name || 'Unknown';
+        const user = window.Telegram.WebApp.initDataUnsafe.user;
+        playerName = user ? (user.username || user.first_name || 'Unknown') : 'Unknown';
+
+        console.log('User Info:', user); // Log the user object for debugging
+        console.log('Player Name:', playerName); // Log the player name to verify
       };
 
       function saveScoreToFirebase(userName, score) {
