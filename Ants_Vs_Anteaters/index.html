@@ -23,37 +23,25 @@
       overflow-y: scroll;
       z-index: 1000;
     }
-    #endgame-overlay {
-      position: fixed;
+    #end-game-overlay {
+      display: none;
+      color: white;
+      background: rgba(0, 0, 0, 0.8);
+      position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .endgame-content {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
       text-align: center;
-    }
-    #top-players {
-      margin-bottom: 20px;
-    }
-    #current-position {
-      margin-top: 20px;
-      font-weight: bold;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 1000;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
   <div id="gse-player" class="gse-frame">
     <div class="gse-overlay">
@@ -61,10 +49,10 @@
         <div>
           <button id="gse-text-cancel">Cancel</button>
           <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt"></p>
+          <p id="gse-text-prompt">Enter Username:</p>
         </div>
         <div>
-          <textarea id="gse-text-input"></textarea>
+          <textarea id="gse-text-input" placeholder="Enter your username"></textarea>
         </div>
       </div>
       <div id="gse-loading" style="visibility: visible;">
@@ -73,16 +61,10 @@
     </div>
   </div>
 
-  <div id="leaderboard"></div>
-
-  <!-- End Game Overlay -->
-  <div id="endgame-overlay">
-    <div class="endgame-content">
-      <h1>Ants Leaderboards</h1>
-      <div id="top-players"></div>
-      <div id="current-position"></div>
-      <button id="close-endgame">Close</button>
-    </div>
+  <div id="end-game-overlay">
+    <h2>Ants Leaderboards</h2>
+    <div id="top-players"></div>
+    <div id="current-position"></div>
   </div>
 
   <script type="text/javascript">
@@ -101,33 +83,57 @@
       firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
 
-      let playerName = localStorage.getItem('playerName') || 'Unknown';
+      let playerId = null;
+      let playerName = 'Unknown';
 
-      function showUsernameOverlay() {
-        const gseOverlay = document.getElementById('gse-text');
-        const inputElement = document.getElementById('gse-text-input');
-        const doneButton = document.getElementById('gse-text-done');
-        const cancelButton = document.getElementById('gse-text-cancel');
-
-        gseOverlay.style.visibility = 'visible';
-
-        doneButton.addEventListener('click', function() {
-          playerName = inputElement.value.trim();
-          if (playerName) {
-            localStorage.setItem('playerName', playerName);
-            gseOverlay.style.visibility = 'hidden';
-            startGame();
-          }
-        });
-
-        cancelButton.addEventListener('click', function() {
-          gseOverlay.style.visibility = 'hidden';
+      function generateUniqueId() {
+        return 'xxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
         });
       }
 
+      function showUsernameOverlay() {
+        document.getElementById('gse-text').style.display = 'block';
+      }
+
+      function hideUsernameOverlay() {
+        document.getElementById('gse-text').style.display = 'none';
+      }
+
+      function checkUser() {
+        const userId = window.localStorage.getItem('playerId');
+        if (userId) {
+          playerId = userId;
+          database.ref(`players/${playerId}`).once('value').then(snapshot => {
+            if (snapshot.exists()) {
+              playerName = snapshot.val().username;
+              hideUsernameOverlay();
+              startGame();
+            } else {
+              showUsernameOverlay();
+            }
+          });
+        } else {
+          showUsernameOverlay();
+        }
+      }
+
+      function saveUsername(username) {
+        if (!username) return;
+        playerId = generateUniqueId();
+        window.localStorage.setItem('playerId', playerId);
+        database.ref(`players/${playerId}`).set({ username: username })
+          .then(() => {
+            playerName = username;
+            hideUsernameOverlay();
+            startGame();
+          })
+          .catch(error => console.error('Error saving username:', error));
+      }
+
       function startGame() {
-        // Initialize game logic or move to the game screen
-        console.log('Starting game with username:', playerName);
+        console.log('Starting game for', playerName);
       }
 
       function saveScoreToFirebase(score) {
@@ -139,6 +145,7 @@
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
         newScoreRef.set({
+          id: playerId,
           name: playerName,
           score: score
         });
@@ -156,56 +163,28 @@
       }
 
       function displayLeaderboard(scores) {
-        const leaderboardElement = document.getElementById('leaderboard');
+        const leaderboardElement = document.getElementById('top-players');
         if (leaderboardElement) {
           leaderboardElement.innerHTML = '';
           scores.forEach((entry) => {
             const entryElement = document.createElement('div');
-            entryElement.textContent = `${entry.name}: ${entry.score}`;
+            entryElement.textContent = `${entry.name}: Total Kills: ${entry.score}`;
             leaderboardElement.appendChild(entryElement);
           });
+
+          // Check current player position
+          const currentPositionElement = document.getElementById('current-position');
+          const currentPlayerScore = scores.find(score => score.id === playerId);
+          if (currentPlayerScore) {
+            currentPositionElement.textContent = `Your Position: ${scores.indexOf(currentPlayerScore) + 1}`;
+          } else {
+            currentPositionElement.textContent = 'You are not in the top 10';
+          }
+
+          document.getElementById('end-game-overlay').style.display = 'block';
         } else {
           console.error('Leaderboard element not found.');
         }
-      }
-
-      function showEndGameOverlay() {
-        const endgameOverlay = document.getElementById('endgame-overlay');
-        const topPlayersElement = document.getElementById('top-players');
-        const currentPositionElement = document.getElementById('current-position');
-
-        // Show the overlay
-        endgameOverlay.style.display = 'flex';
-
-        // Fetch leaderboard data
-        const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
-        scoresRef.once('value', (snapshot) => {
-          const scores = [];
-          snapshot.forEach((childSnapshot) => {
-            scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
-          });
-
-          // Display the top 10 players
-          topPlayersElement.innerHTML = '<h2>Top 10 Players</h2>';
-          scores.forEach((entry, index) => {
-            topPlayersElement.innerHTML += `<p>${index + 1}. ${entry.name}: ${entry.score} Total Kills</p>`;
-          });
-
-          // Display the current player's position if not in top 10
-          const playerPosition = scores.findIndex(entry => entry.name === playerName);
-          if (playerPosition === -1) {
-            // If player is not in the top 10
-            currentPositionElement.textContent = `Your Position: ${scores.length + 1}`;
-          } else {
-            // If player is in the top 10
-            currentPositionElement.textContent = '';
-          }
-        });
-
-        // Close button functionality
-        document.getElementById('close-endgame').addEventListener('click', function() {
-          endgameOverlay.style.display = 'none';
-        });
       }
 
       window.onEngineLoad = function() {
@@ -213,8 +192,11 @@
           const loadingElement = document.getElementById('gse-loading');
 
           var playerDelegate = {
-            onGameCenterPostScore: function(score) {
+            onGameCenterPostScore: function(score, leaderboard) {
               saveScoreToFirebase(score);
+            },
+            onGameCenterShowLeaderboard: function(identifier) {
+              loadLeaderboard(); // Load and display the leaderboard when the delegate is triggered
             },
             onLoadingBegin: function() {
               engine.showOverlay();
@@ -225,12 +207,8 @@
               engine.hideOverlay();
             },
             onGameReady: function() {
-              if (playerName === 'Unknown') {
-                showUsernameOverlay();
-              } else {
-                startGame();
-                loadLeaderboard(); // Load and display the leaderboard when the game is ready
-              }
+              // Load and display the leaderboard when the game is ready
+              loadLeaderboard();
             },
             onWindowResize: function() {
               engine.relayout();
@@ -247,16 +225,12 @@
           });
           engine.loadOptionsFromURL();
           engine.play();
+
+          checkUser(); // Check if user already exists
         });
       };
-
-      // Call showEndGameOverlay() when the game ends
-      function onGameEnd() {
-        showEndGameOverlay();
-      }
     });
   </script>
-
   <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
