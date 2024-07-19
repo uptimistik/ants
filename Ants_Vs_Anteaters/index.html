@@ -3,201 +3,54 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>My Game</title>
-<link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-<link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
+<title>Leaderboard</title>
 <style type="text/css">
 body {
     background-color: black;
-    margin: 0;
-    padding: 0;
-    touch-action: none; /* Disable touch actions */
-}
-#log {
     color: white;
-    background: rgba(0, 0, 0, 0.8);
-    position: absolute;
-    top: 10px;
-    left: 10px;
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+#leaderboard {
+    list-style-type: none;
+    padding: 0;
+}
+#leaderboard li {
+    background: rgba(255, 255, 255, 0.2);
+    margin: 5px 0;
     padding: 10px;
-    max-height: 200px;
-    overflow-y: scroll;
-    z-index: 1000;
+    border-radius: 5px;
 }
 </style>
 </head>
 <body>
-<div id="gse-player" class="gse-frame"></div>
-<div id="profile-info">
-    <p id="profile-name"></p>
-</div>
+<h1>Leaderboard</h1>
+<ul id="leaderboard"></ul>
 
-<script type="text/javascript" src="https://telegram.org/js/telegram-web-app.js"></script>
 <script type="text/javascript">
-function log(message) {
-    console.log(arguments);
-}
-
-navigator.vibrate = function () {
-    if (Telegram.WebApp.HapticFeedback) {
-        Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+document.addEventListener('DOMContentLoaded', function() {
+    function fetchLeaderboard() {
+        // Simulate fetching leaderboard data
+        return [
+            { name: 'Player 1', score: 1200 },
+            { name: 'Player 2', score: 900 },
+            { name: 'Player 3', score: 700 }
+        ];
     }
-}
 
-const PROTO_USER_INFO = `{
-  "Properties": [], "Name": "UserData",
-  "Children": [{
-      "Children": [],
-      "Name": "id150224_headers",
-      "Properties": [
-        { "Name": "rowCount", "Value": 1 },
-        { "Name": "columnCount", "Value": 3 },
-        { "Name": "0-1-name", "Value": "userId" },
-        { "Name": "0-1-type", "Value": 1 },
-        { "Name": "0-2-name", "Value": "username" },
-        { "Name": "0-2-type", "Value": 1 },
-        { "Name": "0-3-name", "Value": "profile_picture" },
-        { "Name": "0-3-type", "Value": 1 }
-      ]
-    },
-    {
-      "Children": [],
-      "Name": "id150224",
-      "Properties": [ { "Name": "1", "Value": "|||" } ]
-    }
-  ]
-}`;
-
-function gstEscape(str) {
-    return str.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
-}
-
-function getUserInfoTable(username, userId, photoUrl) {
-    const table = JSON.parse(PROTO_USER_INFO);
-    table.Children[1].Properties[0].Value = `|${userId}|${gstEscape(username)}|${gstEscape(photoUrl)}`;
-    return table;
-}
-
-function preventDefaultActions(e) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-function maintainExpandedState() {
-    Telegram.WebApp.expand();
-    setTimeout(maintainExpandedState, 1000); // Check and expand every second
-}
-
-window.onEngineLoad = function() {
-    gse.ready(function(engine) {
-        const loadingElement = document.getElementById('gse-loading');
-        const profileName = document.getElementById('profile-name'); // Removed profile-picture element
-        const playerDelegate = {
-            onGameReady: function() {
-                const user = Telegram.WebApp.initDataUnsafe.user;
-                const receiver = Telegram.WebApp.initDataUnsafe.receiver;
-                log("Log Receiver:", receiver);
-                log("User object:", user);
-
-                if (user) {
-                    profileName.textContent = `${user.first_name} ${user.last_name}`;
-                    if (user.photo_url) {
-                        log(`User Photo URL: ${user.photo_url}`);
-                        const img = new Image();
-                        img.src = user.photo_url;
-                        img.crossOrigin = "anonymous"; // Allow cross-origin loading
-
-                        img.onload = function() {
-                            engine.postEvent('loadExternalImage', null, 'ProfilePictureImage', user.photo_url);
-                        };
-                        img.onerror = function() {
-                            log("Failed to load profile picture.");
-                        };
-                    } else {
-                        log("Profile picture URL not provided.");
-                    }
-
-                    try {
-                        const userTable = getUserInfoTable(user.username, user.id, user.photo_url || '');
-                        engine.postEvent(
-                            'externalWriteGameAttribute',
-                            null,
-                            'game.attributes.id150224',
-                            userTable
-                        );
-                    } catch (e) {
-                        log('Error loading user info');
-                        log(e.message);
-                        log(e.stack);
-                    }
-                } else {
-                    log("No user data available.");
-                }
-            },
-            onLoadingBegin: function() {
-                engine.showOverlay();
-                loadingElement.style.visibility = 'visible';
-            },
-            onLoadingEnd: function() {
-                loadingElement.style.visibility = 'hidden';
-                engine.hideOverlay();
-            },
-            onWindowResize: function() {
-                engine.relayout();
-            },
-            onGameCenterPostScore: function(score, leaderboard) {
-                ID.GameAPI.Leaderboards.save(
-                    {
-                        table: leaderboard,
-                        points: score,
-                        allowduplicates: false, // Set to true if players can submit more than one score.
-                        highest: true, // Set to false if a lower score is better.
-                    },
-                    function (data) {
-                        console.log('Leaderboard score posted:', data);
-                    }
-                );
-            }
-        };
-
-        engine.appendDelegate(playerDelegate);
-
-        engine.setRenderFrame('gse-player');
-
-        // Optionally, set viewport options
-        engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
+    function displayLeaderboard(data) {
+        const leaderboard = document.getElementById('leaderboard');
+        data.forEach(function(entry) {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${entry.name}: ${entry.score}`;
+            leaderboard.appendChild(listItem);
         });
-
-        // Optionally, handle initial window size
-        engine.onGameStart = function() {
-            engine.relayout(); // Ensure layout is correct initially
-        };
-
-        // Handle window resize event
-        window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-        engine.loadOptionsFromURL();
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
-        engine.play();
-
-        maintainExpandedState(); // Ensure the window stays expanded
-    });
-};
-
-// Prevent default touch actions
-document.addEventListener('touchmove', preventDefaultActions, { passive: false });
-document.addEventListener('touchstart', preventDefaultActions, { passive: false });
-document.addEventListener('touchend', function(e) {
-    preventDefaultActions(e);
-    if (navigator.vibrate) {
-        navigator.vibrate();
     }
-}, { passive: false });
-</script>
 
-<script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+    const leaderboardData = fetchLeaderboard();
+    displayLeaderboard(leaderboardData);
+});
+</script>
 </body>
 </html>
