@@ -202,7 +202,7 @@
               if (userData && userData.username) {
                 playerName = userData.username;
                 hideUsernameOverlay();
-                // Proceed to game
+                startGame();
               } else {
                 showUsernameOverlay();
               }
@@ -220,23 +220,26 @@
           saveUserToFirebase(userId, username);
           playerName = username;
           hideUsernameOverlay();
-          // Proceed to game
+          startGame();
         } else {
           document.getElementById('error-message').style.display = 'block';
         }
       });
 
-      window.onEngineLoad = function() {
+      function startGame() {
         gse.ready(function(engine) {
-          // Engine setup
           engine.setRenderFrame('gse-player');
           engine.setOptions({
             'viewport-reference': 'window',
             'viewport-fit': 'letterbox'
           });
           engine.loadOptionsFromURL();
-          initializeGame();
+          engine.play();
         });
+      }
+
+      window.onEngineLoad = function() {
+        initializeGame();
       };
 
       document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
