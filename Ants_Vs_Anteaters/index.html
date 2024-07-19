@@ -139,12 +139,8 @@
 
       function saveUserToFirebase(userId, username) {
         const userRef = database.ref('users/' + userId);
-        userRef.set({
+        return userRef.set({
           username: username
-        }).then(() => {
-          console.log('User saved to Firebase:', { userId, username });
-        }).catch((error) => {
-          console.error('Error saving user to Firebase:', error);
         });
       }
 
@@ -155,21 +151,17 @@
         }
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
-        newScoreRef.set({
+        return newScoreRef.set({
           name: playerName,
           score: score
-        }).then(() => {
-          console.log('Score saved to Firebase:', { playerName, score });
-        }).catch((error) => {
-          console.error('Error saving score to Firebase:', error);
         });
       }
 
       function loadLeaderboard() {
         const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
-        scoresRef.once('value', (snapshot) => {
+        scoresRef.once('value').then(snapshot => {
           const scores = [];
-          snapshot.forEach((childSnapshot) => {
+          snapshot.forEach(childSnapshot => {
             scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
           });
           displayLeaderboard(scores);
@@ -229,10 +221,13 @@
           if (!userId) {
             userId = database.ref().child('users').push().key;
           }
-          saveUserToFirebase(userId, username);
-          playerName = username;
-          hideUsernameOverlay();
-          startGame();
+          saveUserToFirebase(userId, username).then(() => {
+            playerName = username;
+            hideUsernameOverlay();
+            startGame();
+          }).catch(error => {
+            console.error('Error saving user to Firebase:', error);
+          });
         } else {
           document.getElementById('error-message').style.display = 'block';
         }
@@ -254,7 +249,6 @@
         initializeGame();
       };
 
-      // Delegate for showing the leaderboard
       window.onGameCenterShowLeaderboard = function() {
         loadLeaderboard();
       };
