@@ -38,9 +38,12 @@
     </div>
   </div>
 
+  <div id="leaderboard"></div>
+
   <!-- Initialize Firebase -->
   <script type="text/javascript">
-    const firebaseConfig = {
+    document.addEventListener('DOMContentLoaded', function() {
+      const firebaseConfig = {
       piKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
       authDomain: "antsgame-204c1.firebaseapp.com",
       databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
@@ -49,81 +52,83 @@
       messagingSenderId: "580715522171",
       appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
       measurementId: "G-E0JEEGY1GR"
-    };
+      };
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-  </script>
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
 
-  <!-- GameSalad integration and onEngineLoad function -->
-  <script type="text/javascript">
-    function saveScoreToFirebase(userName, score) {
-      const scoresRef = firebase.database().ref('scores');
-      const newScoreRef = scoresRef.push();
-      newScoreRef.set({
-        name: userName,
-        score: score
-      });
-    }
-
-    function loadLeaderboard() {
-      const scoresRef = firebase.database().ref('scores').orderByChild('score').limitToLast(10);
-      scoresRef.once('value', (snapshot) => {
-        const scores = [];
-        snapshot.forEach((childSnapshot) => {
-          scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
+      function saveScoreToFirebase(userName, score) {
+        const scoresRef = database.ref('scores');
+        const newScoreRef = scoresRef.push();
+        newScoreRef.set({
+          name: userName,
+          score: score
         });
-        displayLeaderboard(scores);
-      });
-    }
+      }
 
-    function displayLeaderboard(scores) {
-      const leaderboardElement = document.getElementById('leaderboard');
-      leaderboardElement.innerHTML = '';
-      scores.forEach((entry) => {
-        const entryElement = document.createElement('div');
-        entryElement.textContent = `${entry.name}: ${entry.score}`;
-        leaderboardElement.appendChild(entryElement);
-      });
-    }
-
-    window.onEngineLoad = function() {
-      gse.ready(function(engine) {
-        const loadingElement = document.getElementById('gse-loading');
-
-        var playerDelegate = {
-          onGameCenterPostScore: function(score, leaderboard) {
-            const userName = 'Jonathan Francois'; // Retrieve the actual Telegram username here
-            saveScoreToFirebase(userName, score);
-          },
-          onLoadingBegin: function() {
-            engine.showOverlay();
-            loadingElement.style.visibility = 'visible';
-          },
-          onLoadingEnd: function() {
-            loadingElement.style.visibility = 'hidden';
-            engine.hideOverlay();
-          },
-          onGameReady: function() {
-            loadLeaderboard(); // Load and display the leaderboard when the game is ready
-          },
-          onWindowResize: function() {
-            engine.relayout();
-          }
-        };
-
-        engine.appendDelegate(playerDelegate);
-        window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-        engine.setRenderFrame('gse-player');
-        engine.setOptions({
-          'viewport-reference': 'window',
-          'viewport-fit': 'letterbox'
+      function loadLeaderboard() {
+        const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
+        scoresRef.once('value', (snapshot) => {
+          const scores = [];
+          snapshot.forEach((childSnapshot) => {
+            scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
+          });
+          displayLeaderboard(scores);
         });
-        engine.loadOptionsFromURL();
-        engine.play();
-      });
-    };
+      }
+
+      function displayLeaderboard(scores) {
+        const leaderboardElement = document.getElementById('leaderboard');
+        if (leaderboardElement) {
+          leaderboardElement.innerHTML = '';
+          scores.forEach((entry) => {
+            const entryElement = document.createElement('div');
+            entryElement.textContent = `${entry.name}: ${entry.score}`;
+            leaderboardElement.appendChild(entryElement);
+          });
+        } else {
+          console.error('Leaderboard element not found.');
+        }
+      }
+
+      window.onEngineLoad = function() {
+        gse.ready(function(engine) {
+          const loadingElement = document.getElementById('gse-loading');
+
+          var playerDelegate = {
+            onGameCenterPostScore: function(score, leaderboard) {
+              const userName = 'Jonathan Francois'; // Retrieve the actual Telegram username here
+              saveScoreToFirebase(userName, score);
+            },
+            onLoadingBegin: function() {
+              engine.showOverlay();
+              loadingElement.style.visibility = 'visible';
+            },
+            onLoadingEnd: function() {
+              loadingElement.style.visibility = 'hidden';
+              engine.hideOverlay();
+            },
+            onGameReady: function() {
+              loadLeaderboard(); // Load and display the leaderboard when the game is ready
+            },
+            onWindowResize: function() {
+              engine.relayout();
+            }
+          };
+
+          engine.appendDelegate(playerDelegate);
+          window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+          engine.setRenderFrame('gse-player');
+          engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
+          });
+          engine.loadOptionsFromURL();
+          engine.play();
+        });
+      };
+    });
   </script>
 
   <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
