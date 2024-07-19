@@ -14,10 +14,8 @@
       padding: 0;
     }
   </style>
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-  <!-- Telegram Web Apps SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
@@ -42,7 +40,6 @@
 
   <div id="leaderboard"></div>
 
-  <!-- Initialize Firebase -->
   <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function() {
       const firebaseConfig = {
@@ -61,16 +58,21 @@
 
       let playerName = 'Unknown';
 
-      // Initialize Telegram Web App and get user info
-      window.Telegram.WebApp.ready = function() {
+      // Initialize Telegram Web App
+      window.Telegram.WebApp.ready(function() {
         const user = window.Telegram.WebApp.initDataUnsafe.user;
         playerName = user ? (user.username || user.first_name || 'Unknown') : 'Unknown';
 
         console.log('User Info:', user); // Log the user object for debugging
         console.log('Player Name:', playerName); // Log the player name to verify
-      };
+      });
 
       function saveScoreToFirebase(userName, score) {
+        if (!userName || userName === 'Unknown') {
+          console.error('Failed to retrieve username');
+          return;
+        }
+
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
         newScoreRef.set({
