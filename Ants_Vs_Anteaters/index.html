@@ -1,28 +1,122 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Game with Firebase Leaderboard</title>
-  <link rel="stylesheet" type="text/css" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>GameSalad PlayDeck Integration</title>
+  <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
+  <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
+  <style type="text/css">
+    body {
+      background-color: black;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
 
 <body>
-  <div id="game-container">
-    <div id="username-overlay">
-      <p>Enter your username:</p>
-      <input type="text" id="username-input" />
-      <button id="submit-username">Submit</button>
+  <div id="gse-player" class="gse-frame">
+    <div class="gse-overlay">
+      <div id="gse-text" class="gse-dialog">
+        <div>
+          <button id="gse-text-cancel">Cancel</button>
+          <button id="gse-text-done">Done</button>
+          <p id="gse-text-prompt"></p>
+        </div>
+        <div>
+          <textarea id="gse-text-input"></textarea>
+        </div>
+      </div>
+      <div id="gse-loading" style="visibility: visible;">
+        <img src="images/gse-loading.png" />
+      </div>
     </div>
-    <div id="game-content" style="display: none;">
-      <!-- Your game will be embedded here -->
-    </div>
-    <div id="leaderboard"></div>
   </div>
 
-  <script src="game.js"></script>
+  <script type="text/javascript" src="https://cdn.y8.com/api/sdk.js" async></script>
+  <script type="text/javascript" src="https://cdn.playdeck.io/sdk.js" async></script>
+  <script type="text/javascript">
+    (function (global) {
+
+      global.onEngineLoad = function () {
+        gse.ready(function (engine) {
+          var loadingElement = document.getElementById('gse-loading');
+
+          var playerDelegate = {
+            onLogin: function() {
+              PlayDeck.login()
+                .then(response => {
+                  console.log('Logged in:', response);
+                })
+                .catch(error => {
+                  console.error('Login error:', error);
+                });
+            },
+
+            onPostScore: function (score, leaderboard) {
+              PlayDeck.postScore({
+                leaderboardId: leaderboard,
+                score: score
+              })
+              .then(response => {
+                console.log('Score posted:', response);
+              })
+              .catch(error => {
+                console.error('Post score error:', error);
+              });
+            },
+
+            onShowLeaderboard: function (leaderboard) {
+              PlayDeck.showLeaderboard({
+                leaderboardId: leaderboard
+              })
+              .then(response => {
+                console.log('Leaderboard shown:', response);
+              })
+              .catch(error => {
+                console.error('Show leaderboard error:', error);
+              });
+            },
+
+            onLoadingBegin: function () {
+              engine.showOverlay();
+              loadingElement.style.visibility = 'visible';
+            },
+
+            onLoadingEnd: function () {
+              loadingElement.style.visibility = 'hidden';
+              engine.hideOverlay();
+            },
+
+            onGameDimensionsKnown: function (width, height) {
+            },
+
+            onGameReady: function (width, height) {
+            },
+
+            onWindowResize: function () {
+              engine.relayout();
+            }
+          };
+
+          engine.appendDelegate(playerDelegate);
+          window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+          engine.setRenderFrame('gse-player');
+          engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
+          });
+          engine.loadOptionsFromURL();
+          engine.play();
+        });
+      };
+
+    }(window));
+  </script>
+  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
+
 </html>
