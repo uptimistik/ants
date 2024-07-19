@@ -13,6 +13,17 @@
       margin: 0;
       padding: 0;
     }
+    #log {
+      color: white;
+      background: rgba(0, 0, 0, 0.8);
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: scroll;
+      z-index: 1000;
+    }
   </style>
 </head>
 
@@ -34,8 +45,15 @@
       </div>
     </div>
   </div>
+  <div id="log"></div>
 
   <script type="text/javascript">
+    function log(message) {
+      console.log(arguments);
+      const logElement = document.getElementById('log');
+      logElement.innerHTML += '<p>' + JSON.stringify(message) + '</p>';
+    }
+
     (function(global) {
       global.onEngineLoad = function() {
         gse.ready(function(engine) {
@@ -57,7 +75,7 @@
             },
 
             onGameCenterPostScore: function(score, leaderboard) {
-              console.log("Score to post: ", score);
+              log("Score to post: " + score);
               postHighScore(score);
             }
           };
@@ -79,17 +97,17 @@
           // Ensure the SDK is ready and fetch user information
           tg.ready(function() {
             const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
-            console.log("Telegram SDK ready. Init data:", tg.initDataUnsafe);
+            log("Telegram SDK ready. Init data: " + JSON.stringify(tg.initDataUnsafe));
 
             if (user) {
               global.telegramUserId = user.id;
-              console.log("Telegram User ID: ", global.telegramUserId);
-              console.log("Telegram Username: ", user.username);
-              console.log("Telegram First Name: ", user.first_name);
-              console.log("Telegram Last Name: ", user.last_name);
-              console.log("Telegram Language Code: ", user.language_code);
+              log("Telegram User ID: " + global.telegramUserId);
+              log("Telegram Username: " + user.username);
+              log("Telegram First Name: " + user.first_name);
+              log("Telegram Last Name: " + user.last_name);
+              log("Telegram Language Code: " + user.language_code);
             } else {
-              console.error("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
+              log("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
             }
           });
         });
@@ -100,7 +118,7 @@
         const userId = window.telegramUserId;
 
         if (!userId) {
-          console.error("User ID is not available. Ensure the Telegram Web Apps API is initialized correctly.");
+          log("User ID is not available. Ensure the Telegram Web Apps API is initialized correctly.");
           return;
         }
 
@@ -109,14 +127,14 @@
         fetch(url)
           .then(response => response.json())
           .then(data => {
-            console.log('High score post response: ', data);
+            log('High score post response: ' + JSON.stringify(data));
             if (!data.ok) {
-              console.error('Error posting high score:', data.description);
+              log('Error posting high score: ' + data.description);
             } else {
-              console.log('High score posted successfully:', data.result);
+              log('High score posted successfully: ' + JSON.stringify(data.result));
             }
           })
-          .catch(error => console.error('Error posting high score:', error));
+          .catch(error => log('Error posting high score: ' + error));
       }
     }(window));
   </script>
