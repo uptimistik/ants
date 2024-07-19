@@ -32,10 +32,10 @@
     }
 
     window.onload = function() {
-      const tg = window.Telegram;
+      const tg = window.Telegram.WebApp;
 
       if (!tg) {
-        log("Telegram Mini App SDK not found.");
+        log("Telegram Web App SDK not found.");
         return;
       }
 
@@ -44,7 +44,13 @@
       tg.ready(function() {
         log("Telegram SDK ready.");
 
-        // Test user information
+        try {
+          log("Telegram initData: " + tg.initData);
+          log("Telegram initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe));
+        } catch (e) {
+          log("Error accessing initData: " + e.message);
+        }
+
         const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
         if (user) {
           log("Telegram User ID: " + user.id);
