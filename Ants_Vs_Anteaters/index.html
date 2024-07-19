@@ -1,36 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game with Firebase Leaderboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Game with Firebase Leaderboard</title>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
+
 <body>
-    <div id="username-overlay" class="overlay">
-        <div class="overlay-content">
-            <h2>Enter Username</h2>
-            <input type="text" id="username-input" placeholder="Username">
-            <button id="submit-username">Submit</button>
-            <p id="error-message" class="error-message"></p>
-        </div>
+  <div id="game-container">
+    <h1>Ants Leaderboards</h1>
+    <div id="username-overlay">
+      <p>Enter your username:</p>
+      <input type="text" id="username-input" />
+      <button id="submit-username">Submit</button>
     </div>
-    
-    <div id="gse-player" class="gse-frame">
-        <!-- Game content here -->
+    <div id="game-content" style="display: none;">
+      <!-- Your game will be embedded here -->
     </div>
-    
-    <div id="endgame-overlay" class="overlay">
-        <div class="overlay-content">
-            <h2>Ants Leaderboards</h2>
-            <div id="top-players"></div>
-            <p id="current-position"></p>
-        </div>
-    </div>
-    
-    <script src="game.js"></script>
+    <div id="leaderboard"></div>
+  </div>
+
+  <script src="game.js"></script>
 </body>
 </html>
