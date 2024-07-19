@@ -41,7 +41,9 @@
 
       log("Telegram SDK loaded.");
 
-      tg.ready(function() {
+      tg.init(); // Initialize the SDK
+
+      tg.onEvent('ready', function() {
         log("Telegram SDK ready.");
 
         try {
