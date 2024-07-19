@@ -49,7 +49,7 @@
 
   <script type="text/javascript">
     function log(message) {
-      console.log(arguments);
+      console.log(message);
       const logElement = document.getElementById('log');
       logElement.innerHTML += '<p>' + JSON.stringify(message) + '</p>';
     }
@@ -63,15 +63,18 @@
             onLoadingBegin: function() {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
+              log("Loading started.");
             },
 
             onLoadingEnd: function() {
               loadingElement.style.visibility = 'hidden';
               engine.hideOverlay();
+              log("Loading ended.");
             },
 
             onWindowResize: function() {
               engine.relayout();
+              log("Window resized.");
             },
 
             onGameCenterPostScore: function(score, leaderboard) {
@@ -94,10 +97,13 @@
           // Initialize Telegram Web Apps SDK
           const tg = window.Telegram.WebApp;
 
+          log("Initializing Telegram Web Apps SDK...");
+
           // Ensure the SDK is ready and fetch user information
           tg.ready(function() {
+            log("Telegram SDK ready.");
             const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
-            log("Telegram SDK ready. Init data: " + JSON.stringify(tg.initDataUnsafe));
+            log("Telegram initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe));
 
             if (user) {
               global.telegramUserId = user.id;
@@ -110,6 +116,13 @@
               log("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
             }
           });
+
+          // Adding a timeout to ensure initialization is complete
+          setTimeout(function() {
+            if (!global.telegramUserId) {
+              log("User ID is still not available. Please check the initialization process and ensure the Web App is running within Telegram.");
+            }
+          }, 5000);
         });
       };
 
