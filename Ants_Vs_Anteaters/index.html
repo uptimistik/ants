@@ -78,12 +78,14 @@
 
           // Ensure the SDK is ready and fetch user information
           tg.ready(function() {
-            const user = tg.initDataUnsafe.user;
+            const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+            console.log("Telegram SDK ready. Init data:", tg.initDataUnsafe);
+
             if (user) {
               global.telegramUserId = user.id;
               console.log("Telegram User ID: ", global.telegramUserId);
             } else {
-              console.error("Telegram user information is not available.");
+              console.error("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
             }
           });
         });
