@@ -1,173 +1,29 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>GameSalad Telegram Integration</title>
-  <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-  <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
-  <style type="text/css">
-    body {
-      background-color: black;
-      margin: 0;
-      padding: 0;
-    }
-    #log {
-      color: white;
-      background: rgba(0, 0, 0, 0.8);
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 10px;
-      max-height: 200px;
-      overflow-y: scroll;
-      z-index: 1000;
-    }
-  </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
-  <div id="gse-player" class="gse-frame">
-    <div class="gse-overlay">
-      <div id="gse-text" class="gse-dialog">
-        <div>
-          <button id="gse-text-cancel">Cancel</button>
-          <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt"></p>
-        </div>
-        <div>
-          <textarea id="gse-text-input"></textarea>
-        </div>
-      </div>
-      <div id="gse-loading" style="visibility: visible;">
-        <img src="images/gse-loading.png" />
-      </div>
-    </div>
-  </div>
-  <div id="log"></div>
-
-  <script type="text/javascript">
+  <script>
     function log(message) {
       console.log(message);
-      const logElement = document.getElementById('log');
-      logElement.innerHTML += '<p>' + JSON.stringify(message) + '</p>';
     }
 
-    function checkEnvironment() {
-      const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
-      if (isTelegramWebApp) {
-        log("Running within Telegram Web App environment.");
-      } else {
-        log("Not running within Telegram Web App environment.");
-      }
-      return isTelegramWebApp;
-    }
+    window.onload = function() {
+      const tg = window.Telegram.WebApp;
+      tg.ready(function() {
+        log("Telegram SDK ready.");
+        log("Telegram initData: " + tg.initData);
+        log("Telegram initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe));
 
-    (function(global) {
-      global.onEngineLoad = function() {
-        gse.ready(function(engine) {
-          var loadingElement = document.getElementById('gse-loading');
-
-          var playerDelegate = {
-            onLoadingBegin: function() {
-              engine.showOverlay();
-              loadingElement.style.visibility = 'visible';
-              log("Loading started.");
-            },
-
-            onLoadingEnd: function() {
-              loadingElement.style.visibility = 'hidden';
-              engine.hideOverlay();
-              log("Loading ended.");
-            },
-
-            onWindowResize: function() {
-              engine.relayout();
-              log("Window resized.");
-            },
-
-            onGameCenterPostScore: function(score, leaderboard) {
-              log("Score to post: " + score);
-              postHighScore(score);
-            }
-          };
-
-          engine.appendDelegate(playerDelegate);
-          window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
-          });
-          engine.loadOptionsFromURL();
-          engine.play();
-
-          // Initialize Telegram Web Apps SDK
-          log("Initializing Telegram Web Apps SDK...");
-
-          if (checkEnvironment()) {
-            const tg = window.Telegram.WebApp;
-
-            // Ensure the SDK is ready and fetch user information
-            tg.ready(function() {
-              log("Telegram SDK ready.");
-              const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
-              log("Telegram initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe));
-
-              if (user) {
-                global.telegramUserId = user.id;
-                log("Telegram User ID: " + global.telegramUserId);
-                log("Telegram Username: " + user.username);
-                log("Telegram First Name: " + user.first_name);
-                log("Telegram Last Name: " + user.last_name);
-                log("Telegram Language Code: " + user.language_code);
-              } else {
-                log("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
-              }
-            });
-
-            // Adding a timeout to ensure initialization is complete
-            setTimeout(function() {
-              if (!global.telegramUserId) {
-                log("User ID is still not available. Please check the initialization process and ensure the Web App is running within Telegram.");
-              }
-            }, 15000);
-          } else {
-            log("Telegram Web Apps SDK not found. Ensure the script is included and the Web App is running within Telegram.");
-          }
-        });
-      };
-
-      function postHighScore(score) {
-        const botToken = '7131340163:AAG1a1xtMmz46wvsXurUcYOQ37VZRFVGMtY';
-        const userId = window.telegramUserId;
-
-        if (!userId) {
-          log("User ID is not available. Ensure the Telegram Web Apps API is initialized correctly.");
-          return;
+        const user = tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+        if (user) {
+          log("Telegram User ID: " + user.id);
+        } else {
+          log("Telegram user information is not available.");
         }
-
-        const url = `https://api.telegram.org/bot${botToken}/setGameScore?user_id=${userId}&score=${score}&force=true`;
-
-        fetch(url)
-          .then(response => response.json())
-          .then(data => {
-            log('High score post response: ' + JSON.stringify(data));
-            if (!data.ok) {
-              log('Error posting high score: ' + data.description);
-            } else {
-              log('High score posted successfully: ' + JSON.stringify(data.result));
-            }
-          })
-          .catch(error => log('Error posting high score: ' + error));
-      }
-    }(window));
+      });
+    };
   </script>
-
-  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
-
 </html>
