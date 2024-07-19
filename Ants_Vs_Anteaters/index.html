@@ -138,8 +138,13 @@
       }
 
       function saveUserToFirebase(userId, username) {
-        database.ref('users/' + userId).set({
+        const userRef = database.ref('users/' + userId);
+        userRef.set({
           username: username
+        }).then(() => {
+          console.log('User saved to Firebase:', { userId, username });
+        }).catch((error) => {
+          console.error('Error saving user to Firebase:', error);
         });
       }
 
@@ -153,6 +158,10 @@
         newScoreRef.set({
           name: playerName,
           score: score
+        }).then(() => {
+          console.log('Score saved to Firebase:', { playerName, score });
+        }).catch((error) => {
+          console.error('Error saving score to Firebase:', error);
         });
       }
 
@@ -217,6 +226,9 @@
         const usernameInput = document.getElementById('username-input');
         const username = usernameInput.value.trim();
         if (username) {
+          if (!userId) {
+            userId = database.ref().child('users').push().key;
+          }
           saveUserToFirebase(userId, username);
           playerName = username;
           hideUsernameOverlay();
