@@ -40,9 +40,10 @@
 
   <!-- Initialize Firebase -->
   <script type="text/javascript">
-    console.log("Loading Firebase configuration...");
-    const firebaseConfig = {
-      piKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
+    document.addEventListener("DOMContentLoaded", function() {
+      console.log("Loading Firebase configuration...");
+      const firebaseConfig = {
+        piKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
       authDomain: "antsgame-204c1.firebaseapp.com",
       databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
       projectId: "antsgame-204c1",
@@ -50,105 +51,66 @@
       messagingSenderId: "580715522171",
       appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
       measurementId: "G-E0JEEGY1GR"
-    };
+      };
 
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
 
-    console.log("Firebase initialized.");
-  </script>
+      console.log("Firebase initialized.");
 
-  <!-- GameSalad and Game Initialization -->
-  <script type="text/javascript">
-    console.log("Loading GameSalad engine...");
-    function saveScore(userId, score) {
-      const scoresRef = database.ref('scores/' + userId);
-      scoresRef.set({
-        userId: userId,
-        score: score
-      }).then(() => {
-        console.log('Score saved successfully');
-      }).catch((error) => {
-        console.error('Error saving score:', error);
-      });
-    }
-
-    async function fetchLeaderboard() {
-      const dbRef = database.ref('scores');
-      try {
-        const snapshot = await dbRef.once('value');
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const leaderboard = Object.values(data).sort((a, b) => b.score - a.score);
-          displayLeaderboard(leaderboard);
-        } else {
-          console.log('No data available');
-        }
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-      }
-    }
-
-    function displayLeaderboard(data) {
-      const leaderboard = document.getElementById('leaderboard');
-      leaderboard.innerHTML = '';
-      data.forEach(entry => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `${entry.userId}: ${entry.score}`;
-        leaderboard.appendChild(listItem);
-      });
-    }
-
-    window.onEngineLoad = function() {
-      console.log("GameSalad engine loaded.");
-      gse.ready(function(engine) {
-        console.log("GameSalad engine ready.");
-        const loadingElement = document.getElementById('gse-loading');
-        const playerDelegate = {
-          onGameReady: function() {
-            const user = Telegram.WebApp.initDataUnsafe.user;
-            if (user) {
-              console.log(`User: ${user.first_name} ${user.last_name}`);
-              engine.postEvent('loadExternalImage', null, 'ProfilePictureImage', user.photo_url);
-            }
-          },
-          onGameCenterPostScore: function(score, leaderboard) {
-            const user = Telegram.WebApp.initDataUnsafe.user;
-            if (user) {
-              saveScore(user.id, score);
-              fetchLeaderboard();
-            }
-          },
-          onLoadingBegin: function() {
-            engine.showOverlay();
-            loadingElement.style.visibility = 'visible';
-          },
-          onLoadingEnd: function() {
-            loadingElement.style.visibility = 'hidden';
-            engine.hideOverlay();
-          },
-          onWindowResize: function() {
-            engine.relayout();
-          }
-        };
-
-        engine.appendDelegate(playerDelegate);
-        window.addEventListener('resize', playerDelegate.onWindowResize, false);
-        engine.setRenderFrame('gse-player');
-        engine.setOptions({
-          'viewport-reference': 'window',
-          'viewport-fit': 'letterbox'
+      // GameSalad and Game Initialization
+      function saveScore(userId, score) {
+        const scoresRef = database.ref('scores/' + userId);
+        scoresRef.set({
+          userId: userId,
+          score: score
+        }).then(() => {
+          console.log('Score saved successfully');
+        }).catch((error) => {
+          console.error('Error saving score:', error);
         });
-        engine.loadOptionsFromURL();
-        engine.play();
-      });
-    };
+      }
 
-    (function(global) {
-      global.onEngineLoad = function() {
+      async function fetchLeaderboard() {
+        const dbRef = database.ref('scores');
+        try {
+          const snapshot = await dbRef.once('value');
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const leaderboard = Object.values(data).sort((a, b) => b.score - a.score);
+            displayLeaderboard(leaderboard);
+          } else {
+            console.log('No data available');
+          }
+        } catch (error) {
+          console.error('Error fetching leaderboard:', error);
+        }
+      }
+
+      function displayLeaderboard(data) {
+        const leaderboard = document.getElementById('leaderboard');
+        leaderboard.innerHTML = '';
+        data.forEach(entry => {
+          const listItem = document.createElement('li');
+          listItem.textContent = `${entry.userId}: ${entry.score}`;
+          leaderboard.appendChild(listItem);
+        });
+      }
+
+      window.onEngineLoad = function() {
+        console.log("GameSalad engine loaded.");
         gse.ready(function(engine) {
+          console.log("GameSalad engine ready.");
+          const loadingElement = document.getElementById('gse-loading');
           const playerDelegate = {
+            onGameReady: function() {
+              const user = Telegram.WebApp.initDataUnsafe.user;
+              if (user) {
+                console.log(`User: ${user.first_name} ${user.last_name}`);
+                engine.postEvent('loadExternalImage', null, 'ProfilePictureImage', user.photo_url);
+              }
+            },
             onGameCenterPostScore: function(score, leaderboard) {
               const user = Telegram.WebApp.initDataUnsafe.user;
               if (user) {
@@ -166,13 +128,6 @@
             },
             onWindowResize: function() {
               engine.relayout();
-            },
-            onGameReady: function() {
-              const user = Telegram.WebApp.initDataUnsafe.user;
-              if (user) {
-                console.log(`User: ${user.first_name} ${user.last_name}`);
-                engine.postEvent('loadExternalImage', null, 'ProfilePictureImage', user.photo_url);
-              }
             }
           };
 
@@ -187,7 +142,51 @@
           engine.play();
         });
       };
-    }(window));
+
+      (function(global) {
+        global.onEngineLoad = function() {
+          gse.ready(function(engine) {
+            const playerDelegate = {
+              onGameCenterPostScore: function(score, leaderboard) {
+                const user = Telegram.WebApp.initDataUnsafe.user;
+                if (user) {
+                  saveScore(user.id, score);
+                  fetchLeaderboard();
+                }
+              },
+              onLoadingBegin: function() {
+                engine.showOverlay();
+                loadingElement.style.visibility = 'visible';
+              },
+              onLoadingEnd: function() {
+                loadingElement.style.visibility = 'hidden';
+                engine.hideOverlay();
+              },
+              onWindowResize: function() {
+                engine.relayout();
+              },
+              onGameReady: function() {
+                const user = Telegram.WebApp.initDataUnsafe.user;
+                if (user) {
+                  console.log(`User: ${user.first_name} ${user.last_name}`);
+                  engine.postEvent('loadExternalImage', null, 'ProfilePictureImage', user.photo_url);
+                }
+              }
+            };
+
+            engine.appendDelegate(playerDelegate);
+            window.addEventListener('resize', playerDelegate.onWindowResize, false);
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+              'viewport-reference': 'window',
+              'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+            engine.play();
+          });
+        };
+      }(window));
+    });
   </script>
 
   <!-- Load GameSalad Engine -->
