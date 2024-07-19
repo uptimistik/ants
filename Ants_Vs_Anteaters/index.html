@@ -1,266 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>My Game</title>
-  <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-  <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
-  <style type="text/css">
-    body {
-      background-color: black;
-      margin: 0;
-      padding: 0;
-    }
-    #username-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      z-index: 1000;
-    }
-    #username-form {
-      background: #333;
-      padding: 20px;
-      border-radius: 5px;
-      text-align: center;
-    }
-    #username-form input {
-      margin: 10px 0;
-      padding: 10px;
-      border: none;
-      border-radius: 5px;
-      width: 80%;
-    }
-    #username-form button {
-      padding: 10px 20px;
-      border: none;
-      background: #28a745;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #username-form button:disabled {
-      background: #ccc;
-    }
-    #leaderboard-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      z-index: 1000;
-      display: none;
-    }
-    #leaderboard {
-      background: #333;
-      padding: 20px;
-      border-radius: 5px;
-      text-align: center;
-      width: 80%;
-      max-width: 600px;
-    }
-    #leaderboard h2 {
-      margin-top: 0;
-    }
-    .leaderboard-entry {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px;
-      border-bottom: 1px solid #444;
-    }
-    .leaderboard-entry:last-child {
-      border-bottom: none;
-    }
-  </style>
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game with Firebase Leaderboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <!-- Username Overlay -->
-  <div id="username-overlay">
-    <div id="username-form">
-      <h2>Enter Your Username</h2>
-      <input type="text" id="username-input" placeholder="Enter username" />
-      <button id="submit-username">Submit</button>
-      <p id="error-message" style="color: red; display: none;">Username is required!</p>
+    <div id="username-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Enter Username</h2>
+            <input type="text" id="username-input" placeholder="Username">
+            <button id="submit-username">Submit</button>
+            <p id="error-message" class="error-message"></p>
+        </div>
     </div>
-  </div>
-
-  <!-- Leaderboard Overlay -->
-  <div id="leaderboard-overlay">
-    <div id="leaderboard">
-      <h2>Ants Leaderboards</h2>
-      <div id="leaderboard-entries"></div>
-      <div id="current-player"></div>
+    <div id="gse-player" class="gse-frame"></div>
+    <div id="leaderboard"></div>
+    <div id="endgame-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Ants Leaderboards</h2>
+            <div id="top-players"></div>
+            <p id="current-position"></p>
+        </div>
     </div>
-  </div>
-
-  <div id="gse-player" class="gse-frame"></div>
-
-  <script type="text/javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-      const firebaseConfig = {
-        apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
-        authDomain: "antsgame-204c1.firebaseapp.com",
-        databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
-        projectId: "antsgame-204c1",
-        storageBucket: "antsgame-204c1.appspot.com",
-        messagingSenderId: "580715522171",
-        appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
-        measurementId: "G-E0JEEGY1GR"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const database = firebase.database();
-
-      let userId = null;
-      let playerName = null;
-
-      function showUsernameOverlay() {
-        document.getElementById('username-overlay').style.display = 'flex';
-      }
-
-      function hideUsernameOverlay() {
-        document.getElementById('username-overlay').style.display = 'none';
-      }
-
-      function saveUserToFirebase(userId, username) {
-        const userRef = database.ref('users/' + userId);
-        return userRef.set({
-          username: username
-        });
-      }
-
-      function saveScoreToFirebase(score) {
-        if (!playerName) {
-          console.error('Username is required before saving score');
-          return;
-        }
-        const scoresRef = database.ref('scores');
-        const newScoreRef = scoresRef.push();
-        return newScoreRef.set({
-          name: playerName,
-          score: score
-        });
-      }
-
-      function loadLeaderboard() {
-        const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
-        scoresRef.once('value').then(snapshot => {
-          const scores = [];
-          snapshot.forEach(childSnapshot => {
-            scores.unshift(childSnapshot.val()); // Add to the beginning to sort in descending order
-          });
-          displayLeaderboard(scores);
-        });
-      }
-
-      function displayLeaderboard(scores) {
-        const leaderboardEntries = document.getElementById('leaderboard-entries');
-        const currentPlayerElement = document.getElementById('current-player');
-        leaderboardEntries.innerHTML = '';
-        let currentPlayerPosition = -1;
-
-        scores.forEach((entry, index) => {
-          const entryElement = document.createElement('div');
-          entryElement.className = 'leaderboard-entry';
-          entryElement.innerHTML = `<span>${entry.name}</span><span>Total Kills: ${entry.score}</span>`;
-          leaderboardEntries.appendChild(entryElement);
-          if (entry.name === playerName) {
-            currentPlayerPosition = index + 1;
-          }
-        });
-
-        if (currentPlayerPosition === -1) {
-          currentPlayerElement.innerHTML = `Current Position: Not in top 10`;
-        } else {
-          currentPlayerElement.innerHTML = `Current Position: ${currentPlayerPosition}`;
-        }
-
-        document.getElementById('leaderboard-overlay').style.display = 'flex';
-      }
-
-      function initializeGame() {
-        window.Telegram.WebApp.ready(() => {
-          const user = window.Telegram.WebApp.initDataUnsafe.user;
-          if (user && user.id) {
-            userId = user.id;
-            database.ref('users/' + userId).once('value').then(snapshot => {
-              const userData = snapshot.val();
-              if (userData && userData.username) {
-                playerName = userData.username;
-                hideUsernameOverlay();
-                startGame();
-              } else {
-                showUsernameOverlay();
-              }
-            });
-          } else {
-            showUsernameOverlay();
-          }
-        });
-      }
-
-      document.getElementById('submit-username').addEventListener('click', function() {
-        const usernameInput = document.getElementById('username-input');
-        const username = usernameInput.value.trim();
-        if (username) {
-          if (!userId) {
-            userId = database.ref().child('users').push().key;
-          }
-          saveUserToFirebase(userId, username).then(() => {
-            playerName = username;
-            hideUsernameOverlay();
-            startGame();
-          }).catch(error => {
-            console.error('Error saving user to Firebase:', error);
-          });
-        } else {
-          document.getElementById('error-message').style.display = 'block';
-        }
-      });
-
-      function startGame() {
-        gse.ready(function(engine) {
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
-          });
-          engine.loadOptionsFromURL();
-          engine.play();
-        });
-      }
-
-      window.onEngineLoad = function() {
-        initializeGame();
-      };
-
-      window.onGameCenterShowLeaderboard = function() {
-        loadLeaderboard();
-      };
-
-      document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
-      document.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
-      document.addEventListener('touchend', function(e) { e.preventDefault(); }, { passive: false });
-
-      window.onGameCenterPostScore = function(score) {
-        saveScoreToFirebase(score);
-      };
-    });
-  </script>
-  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+    <script src="game.js"></script>
 </body>
 </html>
