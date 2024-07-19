@@ -84,6 +84,10 @@
             if (user) {
               global.telegramUserId = user.id;
               console.log("Telegram User ID: ", global.telegramUserId);
+              console.log("Telegram Username: ", user.username);
+              console.log("Telegram First Name: ", user.first_name);
+              console.log("Telegram Last Name: ", user.last_name);
+              console.log("Telegram Language Code: ", user.language_code);
             } else {
               console.error("Telegram user information is not available. Ensure you are running this within the Telegram Web App environment.");
             }
