@@ -23,25 +23,25 @@
       overflow-y: scroll;
       z-index: 1000;
     }
+    #score-form {
+      color: white;
+      background: rgba(0, 0, 0, 0.8);
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 10px;
+      z-index: 1000;
+    }
+    #score-form input, #score-form button {
+      margin-top: 5px;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-
 <body>
   <div id="gse-player" class="gse-frame">
     <div class="gse-overlay">
-      <div id="gse-text" class="gse-dialog">
-        <div>
-          <button id="gse-text-cancel">Cancel</button>
-          <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt"></p>
-        </div>
-        <div>
-          <textarea id="gse-text-input"></textarea>
-        </div>
-      </div>
       <div id="gse-loading" style="visibility: visible;">
         <img src="images/gse-loading.png" />
       </div>
@@ -49,6 +49,13 @@
   </div>
 
   <div id="leaderboard"></div>
+
+  <div id="score-form">
+    <p>Enter Username and Score</p>
+    <input type="text" id="username-input" placeholder="Username" />
+    <input type="number" id="score-input" placeholder="Score" />
+    <button id="submit-score">Submit Score</button>
+  </div>
 
   <script type="text/javascript">
     document.addEventListener('DOMContentLoaded', function() {
@@ -66,20 +73,8 @@
       firebase.initializeApp(firebaseConfig);
       const database = firebase.database();
 
-      let playerName = 'Unknown';
-
-      // Initialize Telegram Web App
-      window.Telegram.WebApp.ready(() => {
-        const user = window.Telegram.WebApp.initDataUnsafe.user;
-        if (user) {
-          playerName = user.username || user.first_name || 'Unknown';
-        }
-        console.log('User Info:', user); // Log the user object for debugging
-        console.log('Player Name:', playerName); // Log the player name to verify
-      });
-
-      function saveScoreToFirebase(score) {
-        if (!playerName || playerName === 'Unknown') {
+      function saveScoreToFirebase(userName, score) {
+        if (!userName || userName.trim() === '') {
           console.error('Failed to retrieve username');
           return;
         }
@@ -87,10 +82,21 @@
         const scoresRef = database.ref('scores');
         const newScoreRef = scoresRef.push();
         newScoreRef.set({
-          name: playerName,
+          name: userName,
           score: score
         });
       }
+
+      document.getElementById('submit-score').addEventListener('click', function() {
+        const username = document.getElementById('username-input').value.trim();
+        const score = parseInt(document.getElementById('score-input').value, 10);
+
+        if (!isNaN(score) && username) {
+          saveScoreToFirebase(username, score);
+        } else {
+          console.error('Invalid score or username');
+        }
+      });
 
       function loadLeaderboard() {
         const scoresRef = database.ref('scores').orderByChild('score').limitToLast(10);
@@ -122,9 +128,6 @@
           const loadingElement = document.getElementById('gse-loading');
 
           var playerDelegate = {
-            onGameCenterPostScore: function(score) {
-              saveScoreToFirebase(score);
-            },
             onLoadingBegin: function() {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
