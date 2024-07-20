@@ -90,7 +90,7 @@
   </div>
 
   <div id="welcome-overlay" class="overlay">
-    <h1>Start <span id="telegram-name"></span></h1>
+    <h1>Start <span id="telegram-name">Ant Game</span></h1>
     <input id="username-input" type="text" placeholder="Enter your username" style="display: none; margin-bottom: 10px;">
     <button id="start-game-button">Start Game</button>
   </div>
@@ -196,7 +196,6 @@
                 }
               } else {
                 // Not on Telegram, show username input
-                document.getElementById('telegram-name').textContent = 'Ant Game';
                 document.getElementById('username-input').style.display = 'block';
               }
               document.getElementById('welcome-overlay').style.display = 'flex';
