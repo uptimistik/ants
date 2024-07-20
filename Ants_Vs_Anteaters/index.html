@@ -200,11 +200,13 @@
             engine.play();
           });
 
-          document.getElementById('share-button').addEventListener('click', function() {
-            if (window.Telegram && window.Telegram.WebApp) {
-              window.Telegram.WebApp.switchInlineQuery('I just scored ' + currentScore + ' kills in Ant Game! Can you beat me?', ['users', 'groups', 'channels']);
-            }
-          });
+         document.getElementById('share-button').addEventListener('click', function() {
+  if (window.Telegram && window.Telegram.WebApp) {
+    const shareText = encodeURIComponent(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
+    const shareUrl = `https://t.me/share/url?url=https://t.me/@Antsgame_bot&text=${shareText}`;
+    window.Telegram.WebApp.openTelegramLink(shareUrl);
+  }
+});
 
           document.getElementById('replay-button').addEventListener('click', function() {
             document.getElementById('endgame-overlay').style.display = 'none';
