@@ -85,7 +85,7 @@
   </div>
 
   <div id="welcome-overlay" class="overlay">
-    <h1>Start Ant Game</h1>
+    <h1>Start <span id="telegram-name"></span></h1>
     <button id="start-game-button">Start Game</button>
   </div>
 
@@ -119,6 +119,7 @@
 
     (function (global) {
       var currentScore = 0;
+      var telegramUser = null;
       var engine = null;
 
       global.onEngineLoad = function () {
@@ -146,7 +147,9 @@
 
             onGameCenterPostScore: function (score, leaderboard) {
               currentScore = score;
-              updateFirebaseScore(score);
+              if (telegramUser) {
+                updateFirebaseScore(telegramUser.id, telegramUser.first_name + ' ' + telegramUser.last_name, score);
+              }
             },
 
             onGameCenterShowLeaderboard: function(leaderboard) {
@@ -169,6 +172,16 @@
             },
 
             onGameReady: function (width, height) {
+              if (window.Telegram && window.Telegram.WebApp) {
+                telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                if (telegramUser) {
+                  document.getElementById('telegram-name').textContent = telegramUser.first_name + ' ' + telegramUser.last_name;
+                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                    id: telegramUser.id,
+                    name: telegramUser.first_name + ' ' + telegramUser.last_name
+                  });
+                }
+              }
               document.getElementById('welcome-overlay').style.display = 'flex';
             },
 
@@ -208,19 +221,16 @@
         });
       };
 
-      function updateFirebaseScore(score) {
-        const userId = generateUniqueId();
+      function updateFirebaseScore(userId, userName, score) {
         const userRef = firebase.database().ref('users/' + userId);
-        userRef.set({
-          name: "Player",
-          score: score
-        });
-      }
-
-      function generateUniqueId() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
+        userRef.once('value').then((snapshot) => {
+          const userData = snapshot.val();
+          if (!userData || userData.score < score) {
+            userRef.set({
+              name: userName,
+              score: score
+            });
+          }
         });
       }
 
