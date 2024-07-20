@@ -40,6 +40,7 @@
       color: white;
       border: none;
       border-radius: 5px;
+      margin-top: 20px;
     }
     #leaderboard {
       margin: 20px auto;
@@ -76,124 +77,176 @@
     <button id="start-game-button">Start Game</button>
   </div>
 
- <!-- ... (previous HTML remains the same) ... -->
+  <div id="endgame-overlay" class="overlay" style="display: none;">
+    <h2>Top 5 Players</h2>
+    <table id="leaderboard">
+      <tr>
+        <th>Player Name</th>
+        <th>Top Score</th>
+      </tr>
+    </table>
+    <button id="share-button">Share</button>
+  </div>
 
-<div id="endgame-overlay" class="overlay" style="display: none;">
-  <h2>Top 5 Players</h2>
-  <table id="leaderboard">
-    <tr>
-      <th>Player Name</th>
-      <th>Top Score</th>
-    </tr>
-  </table>
-  <button id="share-button">Share</button>
-</div>
+  <script type="text/javascript">
+    (function (global) {
+      var currentScore = 0;
+      var telegramUser = null;
 
-<script type="text/javascript">
-  (function (global) {
-    var currentScore = 0;
-    var telegramUser = null;
+      global.onEngineLoad = function () {
+        gse.ready(function (engine) {
+          var loadingElement = document.getElementById('gse-loading');
 
-    global.onEngineLoad = function () {
-      gse.ready(function (engine) {
-        // ... (previous code remains the same) ...
+          var playerDelegate = { 
+            onTouchPressed: function() {
+              if (navigator.vibrate) {
+                navigator.vibrate(50); // Vibrate for 50ms
+              }
+            },
 
-        var playerDelegate = { 
-          // ... (other delegate methods remain the same) ...
+            onTweetSheet: function (msg, img) {
+              // Custom analytics or other actions can be added here
+            },
 
-          onGameCenterPostScore: function (score, leaderboard) {
-            currentScore = score;
-            if (window.Telegram && window.Telegram.WebApp) {
-              // Store the score in Telegram's CloudStorage
-              var scoreData = JSON.stringify({
-                name: telegramUser.first_name + ' ' + telegramUser.last_name,
-                score: score
-              });
-              window.Telegram.WebApp.CloudStorage.setItem('score_' + telegramUser.id, scoreData, function(error, success) {
-                if (success) {
-                  console.log('Score posted to CloudStorage');
-                  updateLeaderboard();
-                }
-              });
-            }
-          },
+            onSceneAboutToChange : function (sceneKey, sceneName, adType) {
+              // Ad display logic can be added here
+            },
 
-          onGameCenterShowLeaderboard: function(leaderboard) {
-            updateLeaderboard().then(() => {
-              showEndgameOverlay();
-            });
-          },
+            onCurrentSceneChanged: function (sceneKey, sceneName) {
+            },
 
-          // ... (other delegate methods remain the same) ...
-        };
-
-        // ... (previous code remains the same) ...
-
-        engine.play();
-      });
-    };
-
-    function updateLeaderboard() {
-      return new Promise((resolve, reject) => {
-        if (window.Telegram && window.Telegram.WebApp) {
-          window.Telegram.WebApp.CloudStorage.getKeys(function(error, keys) {
-            if (error) {
-              console.error('Error getting keys:', error);
-              reject(error);
-              return;
-            }
-
-            var scoreKeys = keys.filter(key => key.startsWith('score_'));
-            var promises = scoreKeys.map(key => 
-              new Promise((resolve) => {
-                window.Telegram.WebApp.CloudStorage.getItem(key, function(error, value) {
-                  if (error) {
-                    console.error('Error getting item:', error);
-                    resolve(null);
-                  } else {
-                    resolve(JSON.parse(value));
+            onGameCenterPostScore: function (score, leaderboard) {
+              currentScore = score;
+              if (window.Telegram && window.Telegram.WebApp) {
+                // Store the score in Telegram's CloudStorage
+                var scoreData = JSON.stringify({
+                  name: telegramUser.first_name + ' ' + telegramUser.last_name,
+                  score: score
+                });
+                window.Telegram.WebApp.CloudStorage.setItem('score_' + telegramUser.id, scoreData, function(error, success) {
+                  if (success) {
+                    console.log('Score posted to CloudStorage');
+                    updateLeaderboard();
                   }
                 });
-              })
-            );
+              }
+            },
 
-            Promise.all(promises).then(scores => {
-              scores = scores.filter(score => score !== null);
-              scores.sort((a, b) => b.score - a.score);
-              var top5 = scores.slice(0, 5);
-
-              var leaderboardHtml = '<tr><th>Player Name</th><th>Top Score</th></tr>';
-              top5.forEach(score => {
-                leaderboardHtml += `<tr><td>${score.name}</td><td>${score.score}</td></tr>`;
+            onGameCenterShowLeaderboard: function(leaderboard) {
+              updateLeaderboard().then(() => {
+                showEndgameOverlay();
               });
+            },
 
-              document.getElementById('leaderboard').innerHTML = leaderboardHtml;
-              resolve();
-            });
+            onLoadingBegin: function () {
+              engine.showOverlay();
+              loadingElement.style.visibility = 'visible';
+            },
+
+            onLoadingEnd: function () {
+              loadingElement.style.visibility = 'hidden';
+              engine.hideOverlay();
+            },
+
+            onGameDimensionsKnown: function (width, height) {
+            },
+
+            onGameReady: function (width, height) {
+              if (window.Telegram && window.Telegram.WebApp) {
+                telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                if (telegramUser) {
+                  document.getElementById('telegram-name').textContent = telegramUser.first_name + ' ' + telegramUser.last_name;
+                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                    id: telegramUser.id,
+                    name: telegramUser.first_name + ' ' + telegramUser.last_name
+                  });
+                }
+              }
+              document.getElementById('welcome-overlay').style.display = 'flex';
+            },
+
+            onWindowResize: function () {
+              engine.relayout();
+            }
+          };
+
+          engine.appendDelegate(playerDelegate);
+          window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+          engine.setRenderFrame('gse-player');
+          engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
           });
-        } else {
-          reject('Telegram WebApp not available');
-        }
-      });
-    }
+          engine.loadOptionsFromURL();
 
-    function showEndgameOverlay() {
-      document.getElementById('endgame-overlay').style.display = 'flex';
-      
-      document.getElementById('share-button').addEventListener('click', function() {
-        if (window.Telegram && window.Telegram.WebApp) {
-          window.Telegram.WebApp.sendData(JSON.stringify({
-            action: 'share_score',
-            score: currentScore
-          }));
-        }
-      });
-    }
+          document.getElementById('start-game-button').addEventListener('click', function() {
+            document.getElementById('welcome-overlay').style.display = 'none';
+            engine.play();
+          });
+        });
+      };
 
-  }(window));
-</script>
-<!-- ... (rest of the HTML remains the same) ... -->
- <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+      function updateLeaderboard() {
+        return new Promise((resolve, reject) => {
+          if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.CloudStorage.getKeys(function(error, keys) {
+              if (error) {
+                console.error('Error getting keys:', error);
+                reject(error);
+                return;
+              }
+
+              var scoreKeys = keys.filter(key => key.startsWith('score_'));
+              var promises = scoreKeys.map(key => 
+                new Promise((resolve) => {
+                  window.Telegram.WebApp.CloudStorage.getItem(key, function(error, value) {
+                    if (error) {
+                      console.error('Error getting item:', error);
+                      resolve(null);
+                    } else {
+                      resolve(JSON.parse(value));
+                    }
+                  });
+                })
+              );
+
+              Promise.all(promises).then(scores => {
+                scores = scores.filter(score => score !== null);
+                scores.sort((a, b) => b.score - a.score);
+                var top5 = scores.slice(0, 5);
+
+                var leaderboardHtml = '<tr><th>Player Name</th><th>Top Score</th></tr>';
+                top5.forEach(score => {
+                  leaderboardHtml += `<tr><td>${score.name}</td><td>${score.score}</td></tr>`;
+                });
+
+                document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+                resolve();
+              });
+            });
+          } else {
+            reject('Telegram WebApp not available');
+          }
+        });
+      }
+
+      function showEndgameOverlay() {
+        document.getElementById('endgame-overlay').style.display = 'flex';
+        
+        document.getElementById('share-button').addEventListener('click', function() {
+          if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.sendData(JSON.stringify({
+              action: 'share_score',
+              score: currentScore
+            }));
+          }
+        });
+      }
+
+    }(window));
+  </script>
+  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
