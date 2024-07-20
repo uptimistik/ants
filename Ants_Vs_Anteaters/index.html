@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>GameSalad PlayDeck Integration</title>
+  <title>GameSalad Integration</title>
   <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
   <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
   <style type="text/css">
@@ -12,6 +12,34 @@
       background-color: black;
       margin: 0;
       padding: 0;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .overlay.visible {
+      display: flex;
+    }
+    .top-players {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      text-align: left;
+    }
+    .top-players div {
+      background: white;
+      color: black;
+      padding: 10px;
     }
   </style>
 </head>
@@ -35,68 +63,114 @@
     </div>
   </div>
 
-  <script type="text/javascript" src="https://cdn.y8.com/api/sdk.js" async></script>
-  <script type="text/javascript" src="https://cdn.playdeck.io/sdk.js" async></script>
-  <script type="text/javascript">
-    (function (global) {
+  <div id="userOverlay" class="overlay">
+    <div>
+      <h2>Welcome!</h2>
+      <p>It looks like this is your first time playing.</p>
+      <button onclick="startGame()">Start Game</button>
+    </div>
+  </div>
 
-      global.onEngineLoad = function () {
-        gse.ready(function (engine) {
+  <div id="endGameOverlay" class="overlay">
+    <div>
+      <h2>Top 5 Players</h2>
+      <div id="topPlayers" class="top-players"></div>
+      <button onclick="restartGame()">Restart Game</button>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    (function(global) {
+      function getUserProfile() {
+        const { parent } = window;
+        parent.postMessage({ method: 'getUserProfile' }, '*');
+
+        return new Promise((resolve) => {
+          window.addEventListener('message', function handleMessage({ data }) {
+            if (data.method === 'getUserProfile') {
+              window.removeEventListener('message', handleMessage);
+              resolve(data.profile);
+            }
+          });
+        });
+      }
+
+      function setData(key, data) {
+        localStorage.setItem(key, JSON.stringify(data));
+      }
+
+      function getData(key) {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+      }
+
+      function updateTopPlayers(score, username) {
+        let topPlayers = getData('topPlayers') || [];
+        topPlayers.push({ score, username });
+        topPlayers.sort((a, b) => b.score - a.score);
+        if (topPlayers.length > 5) {
+          topPlayers = topPlayers.slice(0, 5);
+        }
+        setData('topPlayers', topPlayers);
+        return topPlayers;
+      }
+
+      global.onEngineLoad = function() {
+        gse.ready(async function(engine) {
           var loadingElement = document.getElementById('gse-loading');
+          var userOverlay = document.getElementById('userOverlay');
+          var endGameOverlay = document.getElementById('endGameOverlay');
+          var topPlayersElement = document.getElementById('topPlayers');
 
           var playerDelegate = {
-            onLogin: function() {
-              PlayDeck.login()
-                .then(response => {
-                  console.log('Logged in:', response);
-                })
-                .catch(error => {
-                  console.error('Login error:', error);
-                });
+            // Show overlay if first time playing
+            checkFirstTimeUser: async function() {
+              const profile = await getUserProfile();
+              setData('currentUserProfile', profile);
+              const userData = getData(`user_${profile.telegramId}`);
+
+              if (!userData) {
+                userOverlay.classList.add('visible');
+                setData(`user_${profile.telegramId}`, { highscore: 0 });
+              }
             },
 
-            onPostScore: function (score, leaderboard) {
-              PlayDeck.postScore({
-                leaderboardId: leaderboard,
-                score: score
-              })
-              .then(response => {
-                console.log('Score posted:', response);
-              })
-              .catch(error => {
-                console.error('Post score error:', error);
+            // Save high score
+            saveHighScore: function(score) {
+              const profile = getData('currentUserProfile');
+              const userData = getData(`user_${profile.telegramId}`);
+              if (score > userData.highscore) {
+                userData.highscore = score;
+                setData(`user_${profile.telegramId}`, userData);
+              }
+              const topPlayers = updateTopPlayers(score, profile.username);
+              this.showEndGameOverlay(topPlayers);
+            },
+
+            // Show end game overlay with top players
+            showEndGameOverlay: function(topPlayers) {
+              topPlayersElement.innerHTML = '';
+              topPlayers.forEach(player => {
+                topPlayersElement.innerHTML += `<div>${player.username}</div><div>${player.score}</div>`;
               });
+              endGameOverlay.classList.add('visible');
             },
 
-            onShowLeaderboard: function (leaderboard) {
-              PlayDeck.showLeaderboard({
-                leaderboardId: leaderboard
-              })
-              .then(response => {
-                console.log('Leaderboard shown:', response);
-              })
-              .catch(error => {
-                console.error('Show leaderboard error:', error);
-              });
-            },
-
-            onLoadingBegin: function () {
+            onLoadingBegin: function() {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
             },
 
-            onLoadingEnd: function () {
+            onLoadingEnd: function() {
               loadingElement.style.visibility = 'hidden';
               engine.hideOverlay();
             },
 
-            onGameDimensionsKnown: function (width, height) {
-            },
+            onGameDimensionsKnown: function(width, height) {},
 
-            onGameReady: function (width, height) {
-            },
+            onGameReady: function(width, height) {},
 
-            onWindowResize: function () {
+            onWindowResize: function() {
               engine.relayout();
             }
           };
@@ -111,7 +185,22 @@
           });
           engine.loadOptionsFromURL();
           engine.play();
+
+          // Check if this is the first time the user is playing
+          playerDelegate.checkFirstTimeUser();
         });
+      };
+
+      global.startGame = function() {
+        document.getElementById('userOverlay').classList.remove('visible');
+        console.log('Game started');
+        // Initialize game start logic here
+      };
+
+      global.restartGame = function() {
+        document.getElementById('endGameOverlay').classList.remove('visible');
+        console.log('Game restarted');
+        // Initialize game restart logic here
       };
 
     }(window));
