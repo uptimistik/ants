@@ -75,6 +75,11 @@
       margin-top: 10px;
       font-weight: bold;
     }
+    #leaderboard-countdown {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #FFD700;
+    }
   </style>
 </head>
 
@@ -104,6 +109,7 @@
 
   <div id="endgame-overlay" class="overlay" style="display: none;">
     <h2>Top 5 Ants</h2>
+    <div id="leaderboard-countdown"></div>
     <table id="leaderboard">
       <tr>
         <th>Ant Name</th>
@@ -303,8 +309,33 @@
         }
       }
 
+      function updateCountdown() {
+        const now = new Date();
+        const target = new Date("2024-07-21T00:00:00Z"); // July 21st, 2024 at 12am UTC
+        
+        if (now >= target) {
+          document.getElementById('leaderboard-countdown').textContent = "Leaderboard reset is in progress!";
+          return;
+        }
+
+        const timeLeft = target - now;
+        const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+        document.getElementById('leaderboard-countdown').textContent = 
+          `Leaderboard resets in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      }
+
+      function startCountdownTimer() {
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+      }
+
       function showEndgameOverlay() {
         document.getElementById('endgame-overlay').style.display = 'flex';
+        startCountdownTimer();
       }
 
     }(window));
