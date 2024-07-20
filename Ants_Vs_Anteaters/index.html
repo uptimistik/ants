@@ -114,197 +114,187 @@
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script type="text/javascript">
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
-      authDomain: "antsgame-204c1.firebaseapp.com",
-      databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
-      projectId: "antsgame-204c1",
-      storageBucket: "antsgame-204c1.appspot.com",
-      messagingSenderId: "580715522171",
-      appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
-      measurementId: "G-E0JEEGY1GR"
-    };
-    firebase.initializeApp(firebaseConfig);
+<script type="text/javascript">
+  // Initialize Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
+    authDomain: "antsgame-204c1.firebaseapp.com",
+    databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
+    projectId: "antsgame-204c1",
+    storageBucket: "antsgame-204c1.appspot.com",
+    messagingSenderId: "580715522171",
+    appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
+    measurementId: "G-E0JEEGY1GR"
+  };
+  firebase.initializeApp(firebaseConfig);
 
-    (function (global) {
-      var currentScore = 0;
-      var telegramUser = null;
-      var engine = null;
-      var isOnTelegram = false;
-      var username = '';
-      var userId = '';
+  var currentScore = 0;
+  var telegramUser = null;
+  var engine = null;
+  var isOnTelegram = false;
+  var username = '';
+  var userId = '';
 
-      function generateUniqueId() {
-        return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  function generateUniqueId() {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  function initializeGame() {
+    if (window.Telegram && window.Telegram.WebApp) {
+      isOnTelegram = true;
+      telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+      if (telegramUser) {
+        username = telegramUser.first_name + ' ' + telegramUser.last_name;
+        userId = telegramUser.id.toString();
+        document.getElementById('player-name').textContent = username;
+        document.getElementById('welcome-overlay').style.display = 'flex';
       }
+    } else {
+      document.getElementById('username-overlay').style.display = 'flex';
+    }
+  }
 
-      global.onEngineLoad = function () {
-        gse.ready(function (gseEngine) {
-          engine = gseEngine;
-          var loadingElement = document.getElementById('gse-loading');
+  function onEngineLoad() {
+    gse.ready(function (gseEngine) {
+      engine = gseEngine;
+      var loadingElement = document.getElementById('gse-loading');
 
-          var playerDelegate = { 
-            onTouchPressed: function() {
-              if (navigator.vibrate) {
-                navigator.vibrate(50);
-              }
-            },
+      var playerDelegate = {
+        onTouchPressed: function() {
+          if (navigator.vibrate) {
+            navigator.vibrate(50);
+          }
+        },
 
-            onTweetSheet: function (msg, img) {
-              // Custom analytics or other actions can be added here
-            },
+        onGameCenterPostScore: function (score, leaderboard) {
+          currentScore = score;
+          updateFirebaseScore(userId, username, score);
+        },
 
-            onSceneAboutToChange : function (sceneKey, sceneName, adType) {
-              // Ad display logic can be added here
-            },
-
-            onCurrentSceneChanged: function (sceneKey, sceneName) {
-            },
-
-            onGameCenterPostScore: function (score, leaderboard) {
-              currentScore = score;
-              updateFirebaseScore(userId, username, score);
-            },
-
-            onGameCenterShowLeaderboard: function(leaderboard) {
-              updateLeaderboard().then(() => {
-                showEndgameOverlay();
-              });
-            },
-
-            onLoadingBegin: function () {
-              engine.showOverlay();
-              loadingElement.style.visibility = 'visible';
-            },
-
-            onLoadingEnd: function () {
-              loadingElement.style.visibility = 'hidden';
-              engine.hideOverlay();
-            },
-
-            onGameDimensionsKnown: function (width, height) {
-            },
-
-            onGameReady: function (width, height) {
-              if (window.Telegram && window.Telegram.WebApp) {
-                isOnTelegram = true;
-                telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-                if (telegramUser) {
-                  username = telegramUser.first_name + ' ' + telegramUser.last_name;
-                  userId = telegramUser.id.toString();
-                  document.getElementById('player-name').textContent = username;
-                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
-                    id: userId,
-                    name: username
-                  });
-                  document.getElementById('welcome-overlay').style.display = 'flex';
-                }
-              } else {
-                document.getElementById('username-overlay').style.display = 'flex';
-              }
-            },
-
-            onWindowResize: function () {
-              engine.relayout();
-            }
-          };
-
-          engine.appendDelegate(playerDelegate);
-          window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
+        onGameCenterShowLeaderboard: function(leaderboard) {
+          updateLeaderboard().then(() => {
+            showEndgameOverlay();
           });
-          engine.loadOptionsFromURL();
+        },
 
-          document.getElementById('submit-username-button').addEventListener('click', function() {
-            username = document.getElementById('username-input').value.trim();
-            if (username) {
-              userId = generateUniqueId();
-              document.getElementById('username-overlay').style.display = 'none';
-              document.getElementById('player-name').textContent = username;
-              document.getElementById('welcome-overlay').style.display = 'flex';
-            } else {
-              alert('Please enter a valid username');
-            }
-          });
+        onLoadingBegin: function () {
+          engine.showOverlay();
+          loadingElement.style.visibility = 'visible';
+        },
 
-          document.getElementById('start-game-button').addEventListener('click', function() {
-            document.getElementById('welcome-overlay').style.display = 'none';
-            engine.play();
-          });
+        onLoadingEnd: function () {
+          loadingElement.style.visibility = 'hidden';
+          engine.hideOverlay();
+        },
 
-          document.getElementById('share-button').addEventListener('click', function() {
-            if (window.Telegram && window.Telegram.WebApp) {
-              const shareText = encodeURIComponent(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
-              const shareUrl = `https://t.me/share/url?url=https://t.me/@Antsgame_bot&text=${shareText}`;
-              window.Telegram.WebApp.openTelegramLink(shareUrl);
-            } else {
-              alert(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
-            }
-          });
+        onGameReady: function (width, height) {
+          initializeGame();
+        },
 
-          document.getElementById('replay-button').addEventListener('click', function() {
-            document.getElementById('endgame-overlay').style.display = 'none';
-            engine.postEvent('resetGame', null, null, null);
-            engine.play();
-          });
-        });
+        onWindowResize: function () {
+          engine.relayout();
+        }
       };
 
-      function updateFirebaseScore(userId, userName, score) {
-        const userRef = firebase.database().ref('users/' + userId);
-        userRef.once('value').then((snapshot) => {
-          const userData = snapshot.val();
-          if (!userData || userData.score < score) {
-            userRef.set({
-              name: userName,
-              score: score
-            });
-          }
+      engine.appendDelegate(playerDelegate);
+      window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+      engine.setRenderFrame('gse-player');
+      engine.setOptions({
+        'viewport-reference': 'window',
+        'viewport-fit': 'letterbox'
+      });
+      engine.loadOptionsFromURL();
+    });
+  }
+
+  document.getElementById('submit-username-button').addEventListener('click', function() {
+    username = document.getElementById('username-input').value.trim();
+    if (username) {
+      userId = generateUniqueId();
+      document.getElementById('username-overlay').style.display = 'none';
+      document.getElementById('player-name').textContent = username;
+      document.getElementById('welcome-overlay').style.display = 'flex';
+    } else {
+      alert('Please enter a valid username');
+    }
+  });
+
+  document.getElementById('start-game-button').addEventListener('click', function() {
+    document.getElementById('welcome-overlay').style.display = 'none';
+    if (engine) {
+      engine.play();
+    }
+  });
+
+  document.getElementById('share-button').addEventListener('click', function() {
+    if (window.Telegram && window.Telegram.WebApp) {
+      const shareText = encodeURIComponent(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
+      const shareUrl = `https://t.me/share/url?url=https://t.me/@Antsgame_bot&text=${shareText}`;
+      window.Telegram.WebApp.openTelegramLink(shareUrl);
+    } else {
+      alert(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
+    }
+  });
+
+  document.getElementById('replay-button').addEventListener('click', function() {
+    document.getElementById('endgame-overlay').style.display = 'none';
+    if (engine) {
+      engine.postEvent('resetGame', null, null, null);
+      engine.play();
+    }
+  });
+
+  function updateFirebaseScore(userId, userName, score) {
+    const userRef = firebase.database().ref('users/' + userId);
+    userRef.once('value').then((snapshot) => {
+      const userData = snapshot.val();
+      if (!userData || userData.score < score) {
+        userRef.set({
+          name: userName,
+          score: score
         });
       }
+    });
+  }
 
-      function updateLeaderboard() {
-        return new Promise((resolve, reject) => {
-          const leaderboardRef = firebase.database().ref('users');
-          leaderboardRef.orderByChild('score').limitToLast(5).once('value', (snapshot) => {
-            const leaderboardData = [];
-            snapshot.forEach((childSnapshot) => {
-              leaderboardData.unshift(childSnapshot.val());
-            });
-
-            let leaderboardHtml = '<tr><th>Ant Name</th><th>Top Kills</th></tr>';
-            leaderboardData.forEach(user => {
-              const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
-              const avatarHtml = `<div class="avatar">${initials}</div>`;
-              leaderboardHtml += `
-                <tr>
-                  <td>${avatarHtml}${user.name}</td>
-                  <td>${user.score}</td>
-                </tr>`;
-            });
-
-            document.getElementById('leaderboard').innerHTML = leaderboardHtml;
-            resolve();
-          }, (error) => {
-            console.error("Error fetching leaderboard data:", error);
-            reject(error);
-          });
+  function updateLeaderboard() {
+    return new Promise((resolve, reject) => {
+      const leaderboardRef = firebase.database().ref('users');
+      leaderboardRef.orderByChild('score').limitToLast(5).once('value', (snapshot) => {
+        const leaderboardData = [];
+        snapshot.forEach((childSnapshot) => {
+          leaderboardData.unshift(childSnapshot.val());
         });
-      }
 
-      function showEndgameOverlay() {
-        document.getElementById('endgame-overlay').style.display = 'flex';
-      }
+        let leaderboardHtml = '<tr><th>Ant Name</th><th>Top Kills</th></tr>';
+        leaderboardData.forEach(user => {
+          const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+          const avatarHtml = `<div class="avatar">${initials}</div>`;
+          leaderboardHtml += `
+            <tr>
+              <td>${avatarHtml}${user.name}</td>
+              <td>${user.score}</td>
+            </tr>`;
+        });
 
-    }(window));
-  </script>
-  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+        document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+        resolve();
+      }, (error) => {
+        console.error("Error fetching leaderboard data:", error);
+        reject(error);
+      });
+    });
+  }
+
+  function showEndgameOverlay() {
+    document.getElementById('endgame-overlay').style.display = 'flex';
+  }
+
+  // Call onEngineLoad when the page is fully loaded
+  window.addEventListener('load', onEngineLoad);
+</script>
+  <script type="text/javascript" src="js/gse/gse-export.js" async></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
