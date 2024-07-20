@@ -1,190 +1,106 @@
-<!DOCTYPE html>
-<html>
+<!-- ... (previous HTML remains the same) ... -->
 
-<head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>GameSalad Telegram Mini App</title>
-  <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-  <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
-  <style type="text/css">
-    body {
-      background-color: black;
-      margin: 0;
-      padding: 0;
-    }
-    .overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      text-align: center;
-      z-index: 1000;
-    }
-    #welcome-overlay h1 {
-      font-size: 24px;
-      margin-bottom: 20px;
-    }
-    #start-game-button, #share-button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-    }
-    #leaderboard {
-      margin: 20px auto;
-      border-collapse: collapse;
-    }
-    #leaderboard th, #leaderboard td {
-      padding: 10px;
-      border: 1px solid white;
-    }
-  </style>
-</head>
+<div id="endgame-overlay" class="overlay" style="display: none;">
+  <h2>Top 5 Players</h2>
+  <table id="leaderboard">
+    <tr>
+      <th>Player Name</th>
+      <th>Top Score</th>
+    </tr>
+  </table>
+  <button id="share-button">Share</button>
+</div>
 
-<body>
-  <div id="gse-player" class="gse-frame">
-    <div class="gse-overlay">
-      <div id="gse-text" class="gse-dialog">
-        <div>
-          <button id="gse-text-cancel">Cancel</button>
-          <button id="gse-text-done">Done</button>
-          <p id="gse-text-prompt"></p>
-        </div>
-        <div>
-          <textarea id="gse-text-input"></textarea>
-        </div>
-      </div>
-      <div id="gse-loading" style="visibility: visible;">
-        <img src="images/gse-loading.png" />
-      </div>
-    </div>
-  </div>
+<script type="text/javascript">
+  (function (global) {
+    var currentScore = 0;
+    var telegramUser = null;
 
-  <div id="welcome-overlay" class="overlay">
-    <h1>Welcome <span id="telegram-name"></span></h1>
-    <button id="start-game-button">Start Game</button>
-  </div>
+    global.onEngineLoad = function () {
+      gse.ready(function (engine) {
+        // ... (previous code remains the same) ...
 
-  <div id="endgame-overlay" class="overlay" style="display: none;">
-    <h2>Leaderboard</h2>
-    <table id="leaderboard">
-      <tr>
-        <th>Ant Name</th>
-        <th>Top Kills</th>
-      </tr>
-    </table>
-    <button id="share-button">Share</button>
-  </div>
+        var playerDelegate = { 
+          // ... (other delegate methods remain the same) ...
 
-  <script type="text/javascript">
-    window.idAsyncInit = function() {
-      // Y8 specific code (if needed)
+          onGameCenterPostScore: function (score, leaderboard) {
+            currentScore = score;
+            if (window.Telegram && window.Telegram.WebApp) {
+              // Store the score in Telegram's CloudStorage
+              var scoreData = JSON.stringify({
+                name: telegramUser.first_name + ' ' + telegramUser.last_name,
+                score: score
+              });
+              window.Telegram.WebApp.CloudStorage.setItem('score_' + telegramUser.id, scoreData, function(error, success) {
+                if (success) {
+                  console.log('Score posted to CloudStorage');
+                  updateLeaderboard();
+                }
+              });
+            }
+          },
+
+          onGameCenterShowLeaderboard: function(leaderboard) {
+            updateLeaderboard().then(() => {
+              showEndgameOverlay();
+            });
+          },
+
+          // ... (other delegate methods remain the same) ...
+        };
+
+        // ... (previous code remains the same) ...
+
+        engine.play();
+      });
     };
 
-    (function (global) {
-      var currentScore = 0;
-      var telegramUser = null;
+    function updateLeaderboard() {
+      return new Promise((resolve, reject) => {
+        if (window.Telegram && window.Telegram.WebApp) {
+          window.Telegram.WebApp.CloudStorage.getKeys(function(error, keys) {
+            if (error) {
+              console.error('Error getting keys:', error);
+              reject(error);
+              return;
+            }
 
-      global.onEngineLoad = function () {
-        gse.ready(function (engine) {
-          var loadingElement = document.getElementById('gse-loading');
-
-          var playerDelegate = { 
-            onTouchPressed: function() {
-              if (navigator.vibrate) {
-                navigator.vibrate(50); // Vibrate for 50ms
-              }
-            },
-
-            onTweetSheet: function (msg, img) {
-              // Custom analytics or other actions can be added here
-            },
-
-            onSceneAboutToChange : function (sceneKey, sceneName, adType) {
-              // Ad display logic can be added here
-            },
-
-            onCurrentSceneChanged: function (sceneKey, sceneName) {
-            },
-
-            onGameCenterPostScore: function (score, leaderboard) {
-              currentScore = score;
-              if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.CloudStorage.setItem('leaderboard_' + leaderboard, score.toString(), function(error, success) {
-                  if (success) {
-                    console.log('Score posted to leaderboard');
+            var scoreKeys = keys.filter(key => key.startsWith('score_'));
+            var promises = scoreKeys.map(key => 
+              new Promise((resolve) => {
+                window.Telegram.WebApp.CloudStorage.getItem(key, function(error, value) {
+                  if (error) {
+                    console.error('Error getting item:', error);
+                    resolve(null);
+                  } else {
+                    resolve(JSON.parse(value));
                   }
                 });
-              }
-            },
+              })
+            );
 
-            onLoadingBegin: function () {
-              engine.showOverlay();
-              loadingElement.style.visibility = 'visible';
-            },
+            Promise.all(promises).then(scores => {
+              scores = scores.filter(score => score !== null);
+              scores.sort((a, b) => b.score - a.score);
+              var top5 = scores.slice(0, 5);
 
-            onLoadingEnd: function () {
-              loadingElement.style.visibility = 'hidden';
-              engine.hideOverlay();
-            },
+              var leaderboardHtml = '<tr><th>Player Name</th><th>Top Score</th></tr>';
+              top5.forEach(score => {
+                leaderboardHtml += `<tr><td>${score.name}</td><td>${score.score}</td></tr>`;
+              });
 
-            onGameDimensionsKnown: function (width, height) {
-            },
-
-            onGameReady: function (width, height) {
-              if (window.Telegram && window.Telegram.WebApp) {
-                telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-                if (telegramUser) {
-                  document.getElementById('telegram-name').textContent = telegramUser.first_name + ' ' + telegramUser.last_name;
-                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
-                    id: telegramUser.id,
-                    name: telegramUser.first_name + ' ' + telegramUser.last_name
-                  });
-                }
-              }
-              document.getElementById('welcome-overlay').style.display = 'flex';
-            },
-
-            onWindowResize: function () {
-              engine.relayout();
-            }
-          };
-
-          engine.appendDelegate(playerDelegate);
-          window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-          engine.setRenderFrame('gse-player');
-          engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
+              document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+              resolve();
+            });
           });
-          engine.loadOptionsFromURL();
-
-          document.getElementById('start-game-button').addEventListener('click', function() {
-            document.getElementById('welcome-overlay').style.display = 'none';
-            engine.play();
-          });
-
-          engine.play();
-        });
-      };
-
-    }(window));
+        } else {
+          reject('Telegram WebApp not available');
+        }
+      });
+    }
 
     function showEndgameOverlay() {
       document.getElementById('endgame-overlay').style.display = 'flex';
-      // Populate leaderboard here (you'll need to implement this based on your data structure)
       
       document.getElementById('share-button').addEventListener('click', function() {
         if (window.Telegram && window.Telegram.WebApp) {
@@ -195,8 +111,7 @@
         }
       });
     }
-  </script>
-  <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</body>
-</html>
+
+  }(window));
+</script>
+<!-- ... (rest of the HTML remains the same) ... -->
