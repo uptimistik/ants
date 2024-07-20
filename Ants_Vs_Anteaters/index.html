@@ -62,6 +62,11 @@
       margin-right: 10px;
       font-weight: bold;
     }
+    #username-input {
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 
@@ -86,6 +91,7 @@
 
   <div id="welcome-overlay" class="overlay">
     <h1>Start <span id="telegram-name"></span></h1>
+    <input id="username-input" type="text" placeholder="Enter your username" style="display: none; margin-bottom: 10px;">
     <button id="start-game-button">Start Game</button>
   </div>
 
@@ -121,6 +127,13 @@
       var currentScore = 0;
       var telegramUser = null;
       var engine = null;
+
+      function generateUniqueId() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
 
       global.onEngineLoad = function () {
         gse.ready(function (gseEngine) {
@@ -181,6 +194,10 @@
                     name: telegramUser.first_name + ' ' + telegramUser.last_name
                   });
                 }
+              } else {
+                // Not on Telegram, show username input
+                document.getElementById('telegram-name').textContent = 'Ant Game';
+                document.getElementById('username-input').style.display = 'block';
               }
               document.getElementById('welcome-overlay').style.display = 'flex';
             },
@@ -201,6 +218,24 @@
           engine.loadOptionsFromURL();
 
           document.getElementById('start-game-button').addEventListener('click', function() {
+            if (!telegramUser) {
+              const usernameInput = document.getElementById('username-input');
+              const username = usernameInput.value.trim();
+              if (username === '') {
+                alert('Please enter a username');
+                return;
+              }
+              const userId = generateUniqueId();
+              telegramUser = {
+                id: userId,
+                first_name: username,
+                last_name: ''
+              };
+              engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                id: userId,
+                name: username
+              });
+            }
             document.getElementById('welcome-overlay').style.display = 'none';
             engine.play();
           });
