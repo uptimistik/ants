@@ -32,7 +32,7 @@
       font-size: 24px;
       margin-bottom: 20px;
     }
-    #start-game-button, #share-button {
+    #start-game-button, #share-button, #replay-button {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -78,23 +78,26 @@
   </div>
 
   <div id="endgame-overlay" class="overlay" style="display: none;">
-    <h2>Top 5 Players</h2>
+    <h2>Top 5 Ants</h2>
     <table id="leaderboard">
       <tr>
-        <th>Player Name</th>
-        <th>Top Score</th>
+        <th>Ant Name</th>
+        <th>Top Kills</th>
       </tr>
     </table>
     <button id="share-button">Share</button>
+    <button id="replay-button">Play Again</button>
   </div>
 
   <script type="text/javascript">
     (function (global) {
       var currentScore = 0;
       var telegramUser = null;
+      var engine = null;
 
       global.onEngineLoad = function () {
-        gse.ready(function (engine) {
+        gse.ready(function (gseEngine) {
+          engine = gseEngine;
           var loadingElement = document.getElementById('gse-loading');
 
           var playerDelegate = { 
@@ -118,15 +121,25 @@
             onGameCenterPostScore: function (score, leaderboard) {
               currentScore = score;
               if (window.Telegram && window.Telegram.WebApp) {
-                // Store the score in Telegram's CloudStorage
-                var scoreData = JSON.stringify({
-                  name: telegramUser.first_name + ' ' + telegramUser.last_name,
-                  score: score
-                });
-                window.Telegram.WebApp.CloudStorage.setItem('score_' + telegramUser.id, scoreData, function(error, success) {
-                  if (success) {
-                    console.log('Score posted to CloudStorage');
-                    updateLeaderboard();
+                // Get the current stored score
+                window.Telegram.WebApp.CloudStorage.getItem('score_' + telegramUser.id, function(error, value) {
+                  var currentStoredScore = 0;
+                  if (!error && value) {
+                    currentStoredScore = JSON.parse(value).score;
+                  }
+                  
+                  // Only update if the new score is higher
+                  if (score > currentStoredScore) {
+                    var scoreData = JSON.stringify({
+                      name: telegramUser.first_name + ' ' + telegramUser.last_name,
+                      score: score
+                    });
+                    window.Telegram.WebApp.CloudStorage.setItem('score_' + telegramUser.id, scoreData, function(error, success) {
+                      if (success) {
+                        console.log('New high score posted to CloudStorage');
+                        updateLeaderboard();
+                      }
+                    });
                   }
                 });
               }
@@ -184,6 +197,18 @@
             document.getElementById('welcome-overlay').style.display = 'none';
             engine.play();
           });
+
+          document.getElementById('share-button').addEventListener('click', function() {
+            if (window.Telegram && window.Telegram.WebApp) {
+              window.Telegram.WebApp.switchInlineQuery('I just scored ' + currentScore + ' kills in Ant Game! Can you beat me?', ['users', 'groups', 'channels']);
+            }
+          });
+
+          document.getElementById('replay-button').addEventListener('click', function() {
+            document.getElementById('endgame-overlay').style.display = 'none';
+            engine.postEvent('resetGame', null, null, null);
+            engine.play();
+          });
         });
       };
 
@@ -216,7 +241,7 @@
                 scores.sort((a, b) => b.score - a.score);
                 var top5 = scores.slice(0, 5);
 
-                var leaderboardHtml = '<tr><th>Player Name</th><th>Top Score</th></tr>';
+                var leaderboardHtml = '<tr><th>Ant Name</th><th>Top Kills</th></tr>';
                 top5.forEach(score => {
                   leaderboardHtml += `<tr><td>${score.name}</td><td>${score.score}</td></tr>`;
                 });
@@ -233,15 +258,6 @@
 
       function showEndgameOverlay() {
         document.getElementById('endgame-overlay').style.display = 'flex';
-        
-        document.getElementById('share-button').addEventListener('click', function() {
-          if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.sendData(JSON.stringify({
-              action: 'share_score',
-              score: currentScore
-            }));
-          }
-        });
       }
 
     }(window));
