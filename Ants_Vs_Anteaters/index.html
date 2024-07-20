@@ -73,7 +73,7 @@
   </div>
 
   <div id="welcome-overlay" class="overlay">
-    <h1>Welcome <span id="telegram-name"></span></h1>
+    <h1>Start <span id="telegram-name"></span></h1>
     <button id="start-game-button">Start Game</button>
   </div>
 
@@ -193,9 +193,11 @@
           });
           engine.loadOptionsFromURL();
 
+          // Don't call engine.play() here, wait for button click
+
           document.getElementById('start-game-button').addEventListener('click', function() {
             document.getElementById('welcome-overlay').style.display = 'none';
-            engine.play();
+            engine.play(); // Start the game when the button is clicked
           });
 
           document.getElementById('share-button').addEventListener('click', function() {
