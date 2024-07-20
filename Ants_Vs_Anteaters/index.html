@@ -28,11 +28,11 @@
       text-align: center;
       z-index: 1000;
     }
-    #welcome-overlay h1 {
+    #start-overlay h1 {
       font-size: 24px;
       margin-bottom: 20px;
     }
-    #start-game-button, #share-button, #replay-button {
+    #start-button, #leaderboard-button, #share-button, #replay-button {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -102,12 +102,13 @@
     </div>
   </div>
 
-  <div id="welcome-overlay" class="overlay">
-    <h1>Start <span id="telegram-name"></span></h1>
-    <button id="start-game-button">Start Game</button>
+  <div id="start-overlay" class="overlay">
+    <h1>Ant Name: <span id="telegram-username"></span></h1>
+    <button id="leaderboard-button">Leaderboard</button>
+    <button id="start-button">Start</button>
   </div>
 
-  <div id="endgame-overlay" class="overlay" style="display: none;">
+  <div id="leaderboard-overlay" class="overlay" style="display: none;">
     <h2>Top 5 Ants</h2>
     <div id="leaderboard-countdown"></div>
     <table id="leaderboard">
@@ -117,6 +118,19 @@
       </tr>
     </table>
     <div id="current-player-row"></div>
+    <button id="back-to-start-button">Back</button>
+  </div>
+
+  <div id="endgame-overlay" class="overlay" style="display: none;">
+    <h2>Game Over</h2>
+    <div id="final-score"></div>
+    <table id="endgame-leaderboard">
+      <tr>
+        <th>Ant Name</th>
+        <th>Top Kills</th>
+      </tr>
+    </table>
+    <div id="endgame-current-player-row"></div>
     <button id="share-button">Share</button>
     <button id="replay-button">Play Again</button>
   </div>
@@ -168,7 +182,7 @@
             onGameCenterPostScore: function (score, leaderboard) {
               currentScore = score;
               if (telegramUser) {
-                updateFirebaseScore(telegramUser.id, telegramUser.first_name + ' ' + telegramUser.last_name, score);
+                updateFirebaseScore(telegramUser.id, telegramUser.username, score);
               }
             },
 
@@ -195,14 +209,14 @@
               if (window.Telegram && window.Telegram.WebApp) {
                 telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
                 if (telegramUser) {
-                  document.getElementById('telegram-name').textContent = telegramUser.first_name + ' ' + telegramUser.last_name;
+                  document.getElementById('telegram-username').textContent = telegramUser.username;
                   engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
                     id: telegramUser.id,
-                    name: telegramUser.first_name + ' ' + telegramUser.last_name
+                    name: telegramUser.username
                   });
                 }
               }
-              document.getElementById('welcome-overlay').style.display = 'flex';
+              document.getElementById('start-overlay').style.display = 'flex';
             },
 
             onWindowResize: function () {
@@ -220,9 +234,22 @@
           });
           engine.loadOptionsFromURL();
 
-          document.getElementById('start-game-button').addEventListener('click', function() {
-            document.getElementById('welcome-overlay').style.display = 'none';
+          document.getElementById('start-button').addEventListener('click', function() {
+            document.getElementById('start-overlay').style.display = 'none';
             engine.play();
+          });
+
+          document.getElementById('leaderboard-button').addEventListener('click', function() {
+            updateLeaderboard().then(() => {
+              document.getElementById('start-overlay').style.display = 'none';
+              document.getElementById('leaderboard-overlay').style.display = 'flex';
+              startCountdownTimer();
+            });
+          });
+
+          document.getElementById('back-to-start-button').addEventListener('click', function() {
+            document.getElementById('leaderboard-overlay').style.display = 'none';
+            document.getElementById('start-overlay').style.display = 'flex';
           });
 
           document.getElementById('share-button').addEventListener('click', function() {
@@ -235,8 +262,8 @@
 
           document.getElementById('replay-button').addEventListener('click', function() {
             document.getElementById('endgame-overlay').style.display = 'none';
+            document.getElementById('start-overlay').style.display = 'flex';
             engine.postEvent('resetGame', null, null, null);
-            engine.play();
           });
         });
       };
@@ -300,12 +327,17 @@
         });
 
         document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+        document.getElementById('endgame-leaderboard').innerHTML = leaderboardHtml;
 
         const currentPlayerRow = document.getElementById('current-player-row');
+        const endgameCurrentPlayerRow = document.getElementById('endgame-current-player-row');
         if (!currentPlayerInTop5) {
-          currentPlayerRow.innerHTML = `Your Rank: ${currentPlayerRank}, Your Score: ${currentScore}`;
+          const playerInfo = `Your Rank: ${currentPlayerRank}, Your Score: ${currentScore}`;
+          currentPlayerRow.innerHTML = playerInfo;
+          endgameCurrentPlayerRow.innerHTML = playerInfo;
         } else {
           currentPlayerRow.innerHTML = '';
+          endgameCurrentPlayerRow.innerHTML = '';
         }
       }
 
@@ -334,6 +366,7 @@
       }
 
       function showEndgameOverlay() {
+        document.getElementById('final-score').textContent = `Your Score: ${currentScore}`;
         document.getElementById('endgame-overlay').style.display = 'flex';
         startCountdownTimer();
       }
