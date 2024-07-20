@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>GameSalad Integration</title>
+  <title>GameSalad Telegram Mini App</title>
   <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
   <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
   <style type="text/css">
@@ -13,33 +13,29 @@
       margin: 0;
       padding: 0;
     }
-    .overlay {
-      display: none;
-      position: fixed;
+    #endgame-overlay {
+      position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
+      background: rgba(0,0,0,0.8);
+      display: none;
       color: white;
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
+      text-align: center;
     }
-    .overlay.visible {
-      display: flex;
+    #leaderboard {
+      margin: 20px auto;
+      border-collapse: collapse;
     }
-    .top-players {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      text-align: left;
-    }
-    .top-players div {
-      background: white;
-      color: black;
+    #leaderboard th, #leaderboard td {
       padding: 10px;
+      border: 1px solid white;
+    }
+    #share-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -63,114 +59,83 @@
     </div>
   </div>
 
-  <div id="userOverlay" class="overlay">
-    <div>
-      <h2>Welcome!</h2>
-      <p>It looks like this is your first time playing.</p>
-      <button onclick="startGame()">Start Game</button>
-    </div>
-  </div>
-
-  <div id="endGameOverlay" class="overlay">
-    <div>
-      <h2>Top 5 Players</h2>
-      <div id="topPlayers" class="top-players"></div>
-      <button onclick="restartGame()">Restart Game</button>
-    </div>
+  <div id="endgame-overlay">
+    <h2>Leaderboard</h2>
+    <table id="leaderboard">
+      <tr>
+        <th>Ant Name</th>
+        <th>Top Kills</th>
+      </tr>
+    </table>
+    <button id="share-button">Share</button>
   </div>
 
   <script type="text/javascript">
-    (function(global) {
-      function getUserProfile() {
-        const { parent } = window;
-        parent.postMessage({ method: 'getUserProfile' }, '*');
+    window.idAsyncInit = function() {
+      // Y8 specific code (if needed)
+    };
 
-        return new Promise((resolve) => {
-          window.addEventListener('message', function handleMessage({ data }) {
-            if (data.method === 'getUserProfile') {
-              window.removeEventListener('message', handleMessage);
-              resolve(data.profile);
-            }
-          });
-        });
-      }
-
-      function setData(key, data) {
-        localStorage.setItem(key, JSON.stringify(data));
-      }
-
-      function getData(key) {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
-      }
-
-      function updateTopPlayers(score, username) {
-        let topPlayers = getData('topPlayers') || [];
-        topPlayers.push({ score, username });
-        topPlayers.sort((a, b) => b.score - a.score);
-        if (topPlayers.length > 5) {
-          topPlayers = topPlayers.slice(0, 5);
-        }
-        setData('topPlayers', topPlayers);
-        return topPlayers;
-      }
-
-      global.onEngineLoad = function() {
-        gse.ready(async function(engine) {
+    (function (global) {
+      global.onEngineLoad = function () {
+        gse.ready(function (engine) {
           var loadingElement = document.getElementById('gse-loading');
-          var userOverlay = document.getElementById('userOverlay');
-          var endGameOverlay = document.getElementById('endGameOverlay');
-          var topPlayersElement = document.getElementById('topPlayers');
+          var currentScore = 0; // Variable to track the current score
 
-          var playerDelegate = {
-            // Show overlay if first time playing
-            checkFirstTimeUser: async function() {
-              const profile = await getUserProfile();
-              setData('currentUserProfile', profile);
-              const userData = getData(`user_${profile.telegramId}`);
-
-              if (!userData) {
-                userOverlay.classList.add('visible');
-                setData(`user_${profile.telegramId}`, { highscore: 0 });
+          var playerDelegate = { 
+            onTouchPressed: function() {
+              if (navigator.vibrate) {
+                navigator.vibrate(50); // Vibrate for 50ms
               }
             },
 
-            // Save high score
-            saveHighScore: function(score) {
-              const profile = getData('currentUserProfile');
-              const userData = getData(`user_${profile.telegramId}`);
-              if (score > userData.highscore) {
-                userData.highscore = score;
-                setData(`user_${profile.telegramId}`, userData);
+            onTweetSheet: function (msg, img) {
+              // Custom analytics or other actions can be added here
+            },
+
+            onSceneAboutToChange : function (sceneKey, sceneName, adType) {
+              // Ad display logic can be added here
+            },
+
+            onCurrentSceneChanged: function (sceneKey, sceneName) {
+            },
+
+            onGameCenterPostScore: function (score, leaderboard) {
+              currentScore = score; // Update the current score
+              if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.CloudStorage.setItem('leaderboard_' + leaderboard, score.toString(), function(error, success) {
+                  if (success) {
+                    console.log('Score posted to leaderboard');
+                  }
+                });
               }
-              const topPlayers = updateTopPlayers(score, profile.username);
-              this.showEndGameOverlay(topPlayers);
             },
 
-            // Show end game overlay with top players
-            showEndGameOverlay: function(topPlayers) {
-              topPlayersElement.innerHTML = '';
-              topPlayers.forEach(player => {
-                topPlayersElement.innerHTML += `<div>${player.username}</div><div>${player.score}</div>`;
-              });
-              endGameOverlay.classList.add('visible');
-            },
-
-            onLoadingBegin: function() {
+            onLoadingBegin: function () {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
             },
 
-            onLoadingEnd: function() {
+            onLoadingEnd: function () {
               loadingElement.style.visibility = 'hidden';
               engine.hideOverlay();
             },
 
-            onGameDimensionsKnown: function(width, height) {},
+            onGameDimensionsKnown: function (width, height) {
+            },
 
-            onGameReady: function(width, height) {},
+            onGameReady: function (width, height) {
+              if (window.Telegram && window.Telegram.WebApp) {
+                var user = window.Telegram.WebApp.initDataUnsafe.user;
+                if (user) {
+                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                    id: user.id,
+                    name: user.first_name + ' ' + user.last_name
+                  });
+                }
+              }
+            },
 
-            onWindowResize: function() {
+            onWindowResize: function () {
               engine.relayout();
             }
           };
@@ -184,28 +149,28 @@
             'viewport-fit': 'letterbox'
           });
           engine.loadOptionsFromURL();
-          engine.play();
 
-          // Check if this is the first time the user is playing
-          playerDelegate.checkFirstTimeUser();
+          engine.play();
         });
       };
 
-      global.startGame = function() {
-        document.getElementById('userOverlay').classList.remove('visible');
-        console.log('Game started');
-        // Initialize game start logic here
-      };
-
-      global.restartGame = function() {
-        document.getElementById('endGameOverlay').classList.remove('visible');
-        console.log('Game restarted');
-        // Initialize game restart logic here
-      };
-
     }(window));
+
+    function showEndgameOverlay() {
+      document.getElementById('endgame-overlay').style.display = 'block';
+      // Populate leaderboard here (you'll need to implement this based on your data structure)
+      
+      document.getElementById('share-button').addEventListener('click', function() {
+        if (window.Telegram && window.Telegram.WebApp) {
+          window.Telegram.WebApp.sendData(JSON.stringify({
+            action: 'share_score',
+            score: currentScore
+          }));
+        }
+      });
+    }
   </script>
   <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
-
 </html>
