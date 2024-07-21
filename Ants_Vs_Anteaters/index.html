@@ -58,6 +58,12 @@
       padding: 10px;
       border-bottom: 1px solid #4CAF50;
     }
+    #leaderboard td:first-child {
+      text-align: center;
+    }
+    #leaderboard td:nth-child(2) {
+      text-align: left;
+    }
     .avatar {
       width: 30px;
       height: 30px;
@@ -127,6 +133,7 @@
     <div id="leaderboard-container">
       <table id="leaderboard">
         <tr>
+          <th>Rank</th>
           <th>Ant Name</th>
           <th>Top Kills</th>
         </tr>
@@ -139,6 +146,7 @@
     <h2>Game Over</h2>
     <div id="final-score"></div>
     <div id="new-high-score" style="display: none;"></div>
+    <button id="view-leaderboard-button">View Leaderboard</button>
     <button id="share-button">Share</button>
     <button id="replay-button">Play Again</button>
   </div>
@@ -240,6 +248,13 @@
             showStartOverlay();
           });
 
+          document.getElementById('view-leaderboard-button').addEventListener('click', function() {
+            updateLeaderboard().then(() => {
+              hideEndgameOverlay();
+              showLeaderboardOverlay();
+            });
+          });
+
           document.getElementById('share-button').addEventListener('click', function() {
             if (window.Telegram && window.Telegram.WebApp) {
               const shareText = encodeURIComponent(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);
@@ -334,10 +349,11 @@
       }
 
       function updateLeaderboardWithCurrentPlayer(leaderboardData) {
-        let leaderboardHtml = '<tr><th>Ant Name</th><th>Top Kills</th></tr>';
+        let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
         let currentPlayerHighScore = 0;
 
         leaderboardData.forEach((user, index) => {
+          const rank = index + 1;
           const initials = user.name.charAt(0).toUpperCase();
           const avatarHtml = `<div class="avatar">${initials}</div>`;
           const isCurrentPlayer = user.id === telegramUser.id;
@@ -349,6 +365,7 @@
 
           leaderboardHtml += `
             <tr>
+              <td>${rank}</td>
               <td>${avatarHtml}${user.name}${currentPlayerIcon}</td>
               <td>${user.score}</td>
             </tr>`;
@@ -368,7 +385,7 @@
 
       function updateCountdown() {
         const now = new Date();
-        const target = new Date("2024-07-21T00:00:00Z");
+        const target = new Date("2024-07-21T00:00:00Z"); // Sunday, July 21st, 2024 at 12am UTC
         
         if (now >= target) {
           document.getElementById('leaderboard-countdown').textContent = "Leaderboard reset is in progress!";
