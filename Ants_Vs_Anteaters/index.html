@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>GameSalad Telegram Mini App</title>
+  <title>Ant Game - Telegram Mini App</title>
   <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
   <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
   <style type="text/css">
@@ -12,6 +12,7 @@
       background-color: black;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
     .overlay {
       position: absolute;
@@ -28,11 +29,10 @@
       text-align: center;
       z-index: 1000;
     }
-    #start-overlay h1 {
-      font-size: 24px;
+    h1, h2 {
       margin-bottom: 20px;
     }
-    #start-button, #leaderboard-button, #share-button, #replay-button {
+    button {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -40,15 +40,23 @@
       color: white;
       border: none;
       border-radius: 5px;
-      margin-top: 20px;
+      margin: 10px;
+    }
+    #leaderboard-container {
+      height: 300px;
+      width: 80%;
+      overflow-y: auto;
+      margin: 20px 0;
+      border: 1px solid #4CAF50;
+      border-radius: 5px;
     }
     #leaderboard {
-      margin: 20px auto;
+      width: 100%;
       border-collapse: collapse;
     }
     #leaderboard th, #leaderboard td {
       padding: 10px;
-      border: 1px solid white;
+      border-bottom: 1px solid #4CAF50;
     }
     .avatar {
       width: 30px;
@@ -71,14 +79,17 @@
       margin-left: 10px;
       vertical-align: middle;
     }
-    #current-player-row {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    #leaderboard-countdown {
+    #total-ants, #your-last-score, #leaderboard-countdown {
       font-size: 14px;
       margin-bottom: 10px;
+    }
+    #leaderboard-countdown {
       color: #FFD700;
+    }
+    #new-high-score {
+      color: #FFD700;
+      font-weight: bold;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -109,28 +120,25 @@
   </div>
 
   <div id="leaderboard-overlay" class="overlay" style="display: none;">
-    <h2>Top 5 Ants</h2>
+    <h2>Ant Leaderboard</h2>
+    <div id="total-ants"></div>
+    <div id="your-last-score"></div>
     <div id="leaderboard-countdown"></div>
-    <table id="leaderboard">
-      <tr>
-        <th>Ant Name</th>
-        <th>Top Kills</th>
-      </tr>
-    </table>
-    <div id="current-player-row"></div>
+    <div id="leaderboard-container">
+      <table id="leaderboard">
+        <tr>
+          <th>Ant Name</th>
+          <th>Top Kills</th>
+        </tr>
+      </table>
+    </div>
     <button id="back-to-start-button">Back</button>
   </div>
 
   <div id="endgame-overlay" class="overlay" style="display: none;">
     <h2>Game Over</h2>
     <div id="final-score"></div>
-    <table id="endgame-leaderboard">
-      <tr>
-        <th>Ant Name</th>
-        <th>Top Kills</th>
-      </tr>
-    </table>
-    <div id="endgame-current-player-row"></div>
+    <div id="new-high-score" style="display: none;"></div>
     <button id="share-button">Share</button>
     <button id="replay-button">Play Again</button>
   </div>
@@ -153,6 +161,7 @@
 
     (function (global) {
       var currentScore = 0;
+      var lastScore = 0;
       var telegramUser = null;
       var engine = null;
 
@@ -164,47 +173,28 @@
           var playerDelegate = { 
             onTouchPressed: function() {
               if (navigator.vibrate) {
-                navigator.vibrate(50); // Vibrate for 50ms
+                navigator.vibrate(50);
               }
             },
-
-            onTweetSheet: function (msg, img) {
-              // Custom analytics or other actions can be added here
-            },
-
-            onSceneAboutToChange : function (sceneKey, sceneName, adType) {
-              // Ad display logic can be added here
-            },
-
-            onCurrentSceneChanged: function (sceneKey, sceneName) {
-            },
-
             onGameCenterPostScore: function (score, leaderboard) {
               currentScore = score;
               if (telegramUser) {
                 updateFirebaseScore(telegramUser.id, telegramUser.username, score);
               }
             },
-
             onGameCenterShowLeaderboard: function(leaderboard) {
               updateLeaderboard().then(() => {
                 showEndgameOverlay();
               });
             },
-
             onLoadingBegin: function () {
               engine.showOverlay();
               loadingElement.style.visibility = 'visible';
             },
-
             onLoadingEnd: function () {
               loadingElement.style.visibility = 'hidden';
               engine.hideOverlay();
             },
-
-            onGameDimensionsKnown: function (width, height) {
-            },
-
             onGameReady: function (width, height) {
               if (window.Telegram && window.Telegram.WebApp) {
                 telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
@@ -218,7 +208,6 @@
               }
               document.getElementById('start-overlay').style.display = 'flex';
             },
-
             onWindowResize: function () {
               engine.relayout();
             }
@@ -279,13 +268,14 @@
               score: score
             });
           }
+          lastScore = score;
         });
       }
 
       function updateLeaderboard() {
         return new Promise((resolve, reject) => {
           const leaderboardRef = firebase.database().ref('users');
-          leaderboardRef.orderByChild('score').limitToLast(5).once('value', (snapshot) => {
+          leaderboardRef.orderByChild('score').once('value', (snapshot) => {
             const leaderboardData = [];
             snapshot.forEach((childSnapshot) => {
               leaderboardData.unshift({
@@ -305,18 +295,16 @@
 
       function updateLeaderboardWithCurrentPlayer(leaderboardData) {
         let leaderboardHtml = '<tr><th>Ant Name</th><th>Top Kills</th></tr>';
-        let currentPlayerInTop5 = false;
-        let currentPlayerRank = leaderboardData.length + 1;
+        let currentPlayerHighScore = 0;
 
         leaderboardData.forEach((user, index) => {
-          const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+          const initials = user.name.charAt(0).toUpperCase();
           const avatarHtml = `<div class="avatar">${initials}</div>`;
           const isCurrentPlayer = user.id === telegramUser.id;
           const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
 
           if (isCurrentPlayer) {
-            currentPlayerInTop5 = true;
-            currentPlayerRank = index + 1;
+            currentPlayerHighScore = user.score;
           }
 
           leaderboardHtml += `
@@ -327,23 +315,20 @@
         });
 
         document.getElementById('leaderboard').innerHTML = leaderboardHtml;
-        document.getElementById('endgame-leaderboard').innerHTML = leaderboardHtml;
+        document.getElementById('total-ants').textContent = `Total Ants: ${leaderboardData.length}`;
+        document.getElementById('your-last-score').textContent = `Your Last Score: ${lastScore}`;
 
-        const currentPlayerRow = document.getElementById('current-player-row');
-        const endgameCurrentPlayerRow = document.getElementById('endgame-current-player-row');
-        if (!currentPlayerInTop5) {
-          const playerInfo = `Your Rank: ${currentPlayerRank}, Your Score: ${currentScore}`;
-          currentPlayerRow.innerHTML = playerInfo;
-          endgameCurrentPlayerRow.innerHTML = playerInfo;
+        if (currentScore > currentPlayerHighScore) {
+          document.getElementById('new-high-score').textContent = `New High Score: ${currentScore}`;
+          document.getElementById('new-high-score').style.display = 'block';
         } else {
-          currentPlayerRow.innerHTML = '';
-          endgameCurrentPlayerRow.innerHTML = '';
+          document.getElementById('new-high-score').style.display = 'none';
         }
       }
 
       function updateCountdown() {
         const now = new Date();
-        const target = new Date("2024-07-21T00:00:00Z"); // July 21st, 2024 at 12am UTC
+        const target = new Date("2024-07-21T00:00:00Z");
         
         if (now >= target) {
           document.getElementById('leaderboard-countdown').textContent = "Leaderboard reset is in progress!";
@@ -368,7 +353,6 @@
       function showEndgameOverlay() {
         document.getElementById('final-score').textContent = `Your Score: ${currentScore}`;
         document.getElementById('endgame-overlay').style.display = 'flex';
-        startCountdownTimer();
       }
 
     }(window));
