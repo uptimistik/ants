@@ -187,7 +187,7 @@
             onGameCenterPostScore: function (score, leaderboard) {
               currentScore = score;
               if (telegramUser) {
-                updateFirebaseScore(telegramUser.id, telegramUser.username, score);
+                updateFirebaseScore(telegramUser.id, telegramUser.displayName, score);
               }
             },
             onGameCenterShowLeaderboard: function(leaderboard) {
@@ -204,14 +204,27 @@
               engine.hideOverlay();
             },
             onGameReady: function (width, height) {
-              if (window.Telegram && window.Telegram.WebApp) {
-                telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-                if (telegramUser) {
-                  document.getElementById('telegram-username').textContent = telegramUser.username;
-                  engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
-                    id: telegramUser.id,
-                    name: telegramUser.username
-                  });
+  if (window.Telegram && window.Telegram.WebApp) {
+    telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+    if (telegramUser) {
+      let displayName = telegramUser.username;
+      if (!displayName) {
+        // If username is not available, use first name and last name
+        displayName = telegramUser.first_name;
+        if (telegramUser.last_name) {
+          displayName += ' ' + telegramUser.last_name;
+        }
+      }
+      telegramUser.displayName = displayName;
+      document.getElementById('telegram-username').textContent = displayName;
+      engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+        id: telegramUser.id,
+        name: displayName
+      });
+    }
+  }
+  showStartOverlay();
+},
                 }
               }
               showStartOverlay();
@@ -311,21 +324,23 @@
       function hideEndgameOverlay() {
         document.getElementById('endgame-overlay').style.display = 'none';
       }
-
+document.addEventListener('DOMContentLoaded', function() {
+  window.Telegram.WebApp.ready();
+});
       function updateFirebaseScore(userId, userName, score) {
-        const userRef = firebase.database().ref('users/' + userId);
-        userRef.once('value').then((snapshot) => {
-          const userData = snapshot.val();
-          if (!userData || userData.score < score) {
-            userRef.set({
-              id: userId,
-              name: userName,
-              score: score
-            });
-          }
-          lastScore = score;
-        });
-      }
+  const userRef = firebase.database().ref('users/' + userId);
+  userRef.once('value').then((snapshot) => {
+    const userData = snapshot.val();
+    if (!userData || userData.score < score) {
+      userRef.set({
+        id: userId,
+        name: userName,
+        score: score
+      });
+    }
+    lastScore = score;
+  });
+}
 
       function updateLeaderboard() {
         return new Promise((resolve, reject) => {
