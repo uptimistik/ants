@@ -154,6 +154,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script type="text/javascript">
+    
     // Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
@@ -166,6 +167,9 @@
       measurementId: "G-E0JEEGY1GR"
     };
     firebase.initializeApp(firebaseConfig);
+    document.addEventListener('DOMContentLoaded', function() {
+  window.Telegram.WebApp.ready();
+});
 
     (function (global) {
       var currentScore = 0;
@@ -203,7 +207,7 @@
               loadingElement.style.visibility = 'hidden';
               engine.hideOverlay();
             },
-            onGameReady: function (width, height) {
+           onGameReady: function (width, height) {
   if (window.Telegram && window.Telegram.WebApp) {
     telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
     if (telegramUser) {
@@ -225,10 +229,6 @@
   }
   showStartOverlay();
 },
-                }
-              }
-              showStartOverlay();
-            },
             onWindowResize: function () {
               engine.relayout();
             }
@@ -324,9 +324,7 @@
       function hideEndgameOverlay() {
         document.getElementById('endgame-overlay').style.display = 'none';
       }
-document.addEventListener('DOMContentLoaded', function() {
-  window.Telegram.WebApp.ready();
-});
+
       function updateFirebaseScore(userId, userName, score) {
   const userRef = firebase.database().ref('users/' + userId);
   userRef.once('value').then((snapshot) => {
