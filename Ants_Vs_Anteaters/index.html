@@ -206,7 +206,7 @@
                   });
                 }
               }
-              document.getElementById('start-overlay').style.display = 'flex';
+              showStartOverlay();
             },
             onWindowResize: function () {
               engine.relayout();
@@ -224,21 +224,20 @@
           engine.loadOptionsFromURL();
 
           document.getElementById('start-button').addEventListener('click', function() {
-            document.getElementById('start-overlay').style.display = 'none';
-            engine.play();
+            hideStartOverlay();
+            resumeGame();
           });
 
           document.getElementById('leaderboard-button').addEventListener('click', function() {
             updateLeaderboard().then(() => {
-              document.getElementById('start-overlay').style.display = 'none';
-              document.getElementById('leaderboard-overlay').style.display = 'flex';
-              startCountdownTimer();
+              hideStartOverlay();
+              showLeaderboardOverlay();
             });
           });
 
           document.getElementById('back-to-start-button').addEventListener('click', function() {
-            document.getElementById('leaderboard-overlay').style.display = 'none';
-            document.getElementById('start-overlay').style.display = 'flex';
+            hideLeaderboardOverlay();
+            showStartOverlay();
           });
 
           document.getElementById('share-button').addEventListener('click', function() {
@@ -250,12 +249,53 @@
           });
 
           document.getElementById('replay-button').addEventListener('click', function() {
-            document.getElementById('endgame-overlay').style.display = 'none';
-            document.getElementById('start-overlay').style.display = 'flex';
+            hideEndgameOverlay();
+            showStartOverlay();
             engine.postEvent('resetGame', null, null, null);
           });
         });
       };
+
+      function pauseGame() {
+        if (engine) {
+          engine.pause();
+        }
+      }
+
+      function resumeGame() {
+        if (engine) {
+          engine.play();
+        }
+      }
+
+      function showStartOverlay() {
+        pauseGame();
+        document.getElementById('start-overlay').style.display = 'flex';
+      }
+
+      function hideStartOverlay() {
+        document.getElementById('start-overlay').style.display = 'none';
+      }
+
+      function showLeaderboardOverlay() {
+        pauseGame();
+        document.getElementById('leaderboard-overlay').style.display = 'flex';
+        startCountdownTimer();
+      }
+
+      function hideLeaderboardOverlay() {
+        document.getElementById('leaderboard-overlay').style.display = 'none';
+      }
+
+      function showEndgameOverlay() {
+        pauseGame();
+        document.getElementById('final-score').textContent = `Your Score: ${currentScore}`;
+        document.getElementById('endgame-overlay').style.display = 'flex';
+      }
+
+      function hideEndgameOverlay() {
+        document.getElementById('endgame-overlay').style.display = 'none';
+      }
 
       function updateFirebaseScore(userId, userName, score) {
         const userRef = firebase.database().ref('users/' + userId);
@@ -348,11 +388,6 @@
       function startCountdownTimer() {
         updateCountdown();
         setInterval(updateCountdown, 1000);
-      }
-
-      function showEndgameOverlay() {
-        document.getElementById('final-score').textContent = `Your Score: ${currentScore}`;
-        document.getElementById('endgame-overlay').style.display = 'flex';
       }
 
     }(window));
