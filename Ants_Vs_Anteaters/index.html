@@ -1,28 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Game with Firebase Leaderboard</title>
-  <link rel="stylesheet" type="text/css" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.9.2/firebase-database-compat.js"></script>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Ant Game - Telegram Mini App</title>
+<link rel="stylesheet" type="text/css" href="css/gse-style.css"/>
+<link rel="stylesheet" type="text/css" href="css/gse-style-loading.css"/>
+<style>
+body{background-color:#000;margin:0;padding:0;font-family:Arial,sans-serif}.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;text-align:center;z-index:1000}h1,h2{margin-bottom:20px}button{padding:10px 20px;font-size:16px;cursor:pointer;background-color:#4CAF50;color:#fff;border:none;border-radius:5px;margin:10px}#leaderboard-container{height:300px;width:80%;overflow-y:auto;margin:20px 0;border:1px solid #4CAF50;border-radius:5px}#leaderboard{width:100%;border-collapse:collapse}#leaderboard th,#leaderboard td{padding:10px;border-bottom:1px solid #4CAF50}#leaderboard td:first-child{text-align:center}#leaderboard td:nth-child(2){text-align:left}.avatar{width:30px;height:30px;border-radius:50%;background-color:#4CAF50;color:#fff;display:inline-flex;justify-content:center;align-items:center;margin-right:10px;font-weight:700}.current-player-icon{display:inline-block;width:20px;height:20px;background-color:#FFD700;border-radius:50%;margin-left:10px;vertical-align:middle}#total-ants,#your-last-score,#leaderboard-countdown{font-size:14px;margin-bottom:10px}#leaderboard-countdown{color:#FFD700}#new-high-score{color:#FFD700;font-weight:700;margin-top:10px}
+</style>
 </head>
-
 <body>
-  <div id="game-container">
-    <div id="username-overlay">
-      <p>Enter your username:</p>
-      <input type="text" id="username-input" />
-      <button id="submit-username">Submit</button>
-    </div>
-    <div id="game-content" style="display: none;">
-      <!-- Your game will be embedded here -->
-    </div>
-    <div id="leaderboard"></div>
-  </div>
-
-  <script src="game.js"></script>
+<div id="gse-player" class="gse-frame">
+<div class="gse-overlay">
+<div id="gse-text" class="gse-dialog">
+<div>
+<button id="gse-text-cancel">Cancel</button>
+<button id="gse-text-done">Done</button>
+<p id="gse-text-prompt"></p>
+</div>
+<div>
+<textarea id="gse-text-input"></textarea>
+</div>
+</div>
+<div id="gse-loading" style="visibility:visible;">
+<img src="images/gse-loading.png"/>
+</div>
+</div>
+</div>
+<div id="start-overlay" class="overlay">
+<h1>Ant Name: <span id="telegram-username"></span></h1>
+<button id="leaderboard-button">Leaderboard</button>
+<button id="start-button">Start</button>
+</div>
+<div id="leaderboard-overlay" class="overlay" style="display:none;">
+<h2>Ant Leaderboard</h2>
+<div id="total-ants"></div>
+<div id="your-last-score"></div>
+<div id="leaderboard-countdown"></div>
+<div id="leaderboard-container">
+<table id="leaderboard">
+<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>
+</table>
+</div>
+<button id="back-to-start-button">Back</button>
+</div>
+<div id="endgame-overlay" class="overlay" style="display:none;">
+<h2>Game Over</h2>
+<div id="final-score"></div>
+<div id="new-high-score" style="display:none;"></div>
+<button id="view-leaderboard-button">View Leaderboard</button>
+<button id="share-button">Share</button>
+<button id="replay-button">Play Again</button>
+</div>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",authDomain:"antsgame-204c1.firebaseapp.com",databaseURL:"https://antsgame-204c1-default-rtdb.firebaseio.com",projectId:"antsgame-204c1",storageBucket:"antsgame-204c1.appspot.com",messagingSenderId:"580715522171",appId:"1:580715522171:web:0bba6c6a16399dc3fe5ade",measurementId:"G-E0JEEGY1GR"};firebase.initializeApp(firebaseConfig);document.addEventListener('DOMContentLoaded',function(){window.Telegram.WebApp.ready()});(function(global){var currentScore=0,lastScore=0,telegramUser=null,engine=null;global.onEngineLoad=function(){gse.ready(function(gseEngine){engine=gseEngine;var loadingElement=document.getElementById('gse-loading');var playerDelegate={onTouchPressed:function(){if(navigator.vibrate)navigator.vibrate(50)},onGameCenterPostScore:function(score,leaderboard){currentScore=score;if(telegramUser)updateFirebaseScore(telegramUser.id,telegramUser.displayName,score)},onGameCenterShowLeaderboard:function(leaderboard){updateLeaderboard().then(()=>{showEndgameOverlay()})},onLoadingBegin:function(){engine.showOverlay();loadingElement.style.visibility='visible'},onLoadingEnd:function(){loadingElement.style.visibility='hidden';engine.hideOverlay()},onGameReady:function(width,height){if(window.Telegram&&window.Telegram.WebApp){telegramUser=window.Telegram.WebApp.initDataUnsafe.user;if(telegramUser){let displayName=telegramUser.username;if(!displayName){displayName=telegramUser.first_name;if(telegramUser.last_name)displayName+=' '+telegramUser.last_name}telegramUser.displayName=displayName;document.getElementById('telegram-username').textContent=displayName;engine.postEvent('externalWriteGameAttribute',null,"game.attributes.telegramUser",{id:telegramUser.id,name:displayName})}}showStartOverlay()},onWindowResize:function(){engine.relayout()}};engine.appendDelegate(playerDelegate);window.addEventListener('resize',playerDelegate.onWindowResize,false);engine.setRenderFrame('gse-player');engine.setOptions({'viewport-reference':'window','viewport-fit':'letterbox'});engine.loadOptionsFromURL();document.getElementById('start-button').addEventListener('click',function(){hideStartOverlay();resumeGame()});document.getElementById('leaderboard-button').addEventListener('click',function(){updateLeaderboard().then(()=>{hideStartOverlay();showLeaderboardOverlay()})});document.getElementById('back-to-start-button').addEventListener('click',function(){hideLeaderboardOverlay();showStartOverlay()});document.getElementById('view-leaderboard-button').addEventListener('click',function(){updateLeaderboard().then(()=>{hideEndgameOverlay();showLeaderboardOverlay()})});document.getElementById('share-button').addEventListener('click',function(){if(window.Telegram&&window.Telegram.WebApp){const shareText=encodeURIComponent(`I just scored ${currentScore} kills in Ant Game! Can you beat me?`);const shareUrl=`https://t.me/share/url?url=https://t.me/@Antsgame_bot&text=${shareText}`;window.Telegram.WebApp.openTelegramLink(shareUrl)}});document.getElementById('replay-button').addEventListener('click',function(){hideEndgameOverlay();showStartOverlay();engine.postEvent('resetGame',null,null,null)})})};function pauseGame(){if(engine)engine.pause()}function resumeGame(){if(engine)engine.play()}function showStartOverlay(){pauseGame();document.getElementById('start-overlay').style.display='flex'}function hideStartOverlay(){document.getElementById('start-overlay').style.display='none'}function showLeaderboardOverlay(){pauseGame();document.getElementById('leaderboard-overlay').style.display='flex';startCountdownTimer()}function hideLeaderboardOverlay(){document.getElementById('leaderboard-overlay').style.display='none'}function showEndgameOverlay(){pauseGame();document.getElementById('final-score').textContent=`Your Score: ${currentScore}`;document.getElementById('endgame-overlay').style.display='flex'}function hideEndgameOverlay(){document.getElementById('endgame-overlay').style.display='none'}function updateFirebaseScore(userId,userName,score){const userRef=firebase.database().ref('users/'+userId);userRef.once('value').then((snapshot)=>{const userData=snapshot.val();if(!userData||userData.score<score){userRef.set({id:userId,name:userName,score:score})}lastScore=score})}function updateLeaderboard(){return new Promise((resolve,reject)=>{const leaderboardRef=firebase.database().ref('users');leaderboardRef.orderByChild('score').once('value',(snapshot)=>{const leaderboardData=[];snapshot.forEach((childSnapshot)=>{leaderboardData.unshift({id:childSnapshot.key,...childSnapshot.val()})});updateLeaderboardWithCurrentPlayer(leaderboardData);resolve()},(error)=>{console.error("Error fetching leaderboard data:",error);reject(error)})})}function updateLeaderboardWithCurrentPlayer(leaderboardData){let leaderboardHtml='<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';let currentPlayerHighScore=0;leaderboardData.forEach((user,index)=>{const rank=index+1;const initials=user.name.charAt(0).toUpperCase();const avatarHtml=`<div class="avatar">${initials}</div>`;const isCurrentPlayer=user.id===telegramUser.id;const currentPlayerIcon=isCurrentPlayer?'<span class="current-player-icon"></span>':'';if(isCurrentPlayer)currentPlayerHighScore=user.score;leaderboardHtml+=`<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`});document.getElementById('leaderboard').innerHTML=leaderboardHtml;document.getElementById('total-ants').textContent=`Total Ants: ${leaderboardData.length}`;document.getElementById('your-last-score').textContent=`Your Last Score: ${lastScore}`;if(currentScore>currentPlayerHighScore){document.getElementById('new-high-score').textContent=`New High Score: ${currentScore}`;document.getElementById('new-high-score').style.display='block'}else{document.getElementById('new-high-score').style.display='none'}}function updateCountdown(){const now=new Date();const target=new Date("2024-07-21T00:00:00Z");if(now>=target){document.getElementById('leaderboard-countdown').textContent="Leaderboard reset is in progress!";return}const timeLeft=target-now;const days=Math.floor(timeLeft/(1000*60*60*24));const hours=Math.floor((timeLeft%(1000*60*60*24))/(1000*60*60));const minutes=Math.floor((timeLeft%(1000*60*60))/(1000*60));const seconds=Math.floor((timeLeft%(1000*60))/1000);document.getElementById('leaderboard-countdown').textContent=`Leaderboard resets in: ${days}d ${hours}h ${minutes}m ${seconds}s`}function startCountdownTimer(){updateCountdown();setInterval(updateCountdown,1000)}}(window));
+</script>
+<script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
