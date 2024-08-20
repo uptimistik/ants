@@ -27,11 +27,11 @@ function onEngineLoad() {
             onLoadingBegin: function() {
                 console.log("Loading began");
                 engine.showOverlay();
-                loadingElement.style.visibility = 'visible';
+                if (loadingElement) loadingElement.style.visibility = 'visible';
             },
             onLoadingEnd: function() {
                 console.log("Loading ended");
-                loadingElement.style.visibility = 'hidden';
+                if (loadingElement) loadingElement.style.visibility = 'hidden';
                 engine.hideOverlay();
             },
             onGameReady: function(width, height) {
