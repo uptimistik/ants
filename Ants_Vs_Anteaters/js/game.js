@@ -1,10 +1,6 @@
-console.log('game.js loaded');
-
 // Game engine logic
 function onEngineLoad() {
-    console.log("onEngineLoad called");
     gse.ready(function(gseEngine) {
-        console.log("gse.ready callback executed");
         window.engine = gseEngine;
         var loadingElement = document.getElementById('gse-loading');
         var playerDelegate = {
@@ -12,34 +8,38 @@ function onEngineLoad() {
                 if (navigator.vibrate) navigator.vibrate(50);
             },
             onGameCenterPostScore: function(score, leaderboard) {
-                console.log("Score posted:", score);
                 window.currentScore = score;
-                window.appFunctions.updateFirebaseScore(score);
+                if (window.telegramUser) updateFirebaseScore(window.telegramUser.id, window.telegramUser.displayName, score);
             },
             onGameCenterShowLeaderboard: function(leaderboard) {
-                console.log("Show leaderboard requested");
-                window.appFunctions.updateInGameLeaderboard().then(() => {
-                    window.appFunctions.showInGameLeaderboard();
-                }).catch(error => {
-                    console.error("Error updating leaderboard:", error);
+                updateInGameLeaderboard().then(() => {
+                    showInGameLeaderboard();
                 });
             },
             onLoadingBegin: function() {
-                console.log("Loading began");
                 engine.showOverlay();
-                if (loadingElement) loadingElement.style.visibility = 'visible';
+                loadingElement.style.visibility = 'visible';
             },
             onLoadingEnd: function() {
-                console.log("Loading ended");
-                if (loadingElement) loadingElement.style.visibility = 'hidden';
+                loadingElement.style.visibility = 'hidden';
                 engine.hideOverlay();
             },
             onGameReady: function(width, height) {
-                console.log("Game ready. Width:", width, "Height:", height);
-                startGame();
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                    if (window.telegramUser) {
+                        let displayName = getTelegramDisplayName(window.telegramUser);
+                        window.telegramUser.displayName = displayName;
+                        document.getElementById('telegram-username').textContent = displayName;
+                        engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                            id: window.telegramUser.id,
+                            name: displayName
+                        });
+                    }
+                }
+                showStartOverlay();
             },
             onWindowResize: function() {
-                console.log("Window resized");
                 engine.relayout();
             }
         };
@@ -55,11 +55,117 @@ function onEngineLoad() {
     });
 }
 
-// Start game function
-function startGame() {
-    console.log("Starting game");
-    window.appFunctions.resumeGame();
+// Leaderboard functionality
+function updateFirebaseScore(userId, userName, score) {
+    const userRef = firebase.database().ref('users/' + userId);
+    userRef.once('value').then((snapshot) => {
+        const userData = snapshot.val();
+        if (!userData || userData.score < score) {
+            userRef.set({
+                id: userId,
+                name: userName,
+                score: score
+            });
+        }
+        window.lastScore = score;
+    });
 }
 
-// Make sure onEngineLoad is globally accessible
-window.onEngineLoad = onEngineLoad;
+function updateLeaderboard() {
+    return new Promise((resolve, reject) => {
+        const leaderboardRef = firebase.database().ref('users');
+        leaderboardRef.orderByChild('score').once('value', (snapshot) => {
+            const leaderboardData = [];
+            snapshot.forEach((childSnapshot) => {
+                leaderboardData.unshift({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            updateLeaderboardWithCurrentPlayer(leaderboardData);
+            resolve();
+        }, (error) => {
+            console.error("Error fetching leaderboard data:", error);
+            reject(error);
+        });
+    });
+}
+
+function updateLeaderboardWithCurrentPlayer(leaderboardData) {
+    let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
+    let currentPlayerHighScore = 0;
+    leaderboardData.forEach((user, index) => {
+        const rank = index + 1;
+        const initials = user.name.charAt(0).toUpperCase();
+        const avatarHtml = `<div class="avatar">${initials}</div>`;
+        const isCurrentPlayer = user.id === window.telegramUser.id;
+        const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
+        if (isCurrentPlayer) currentPlayerHighScore = user.score;
+        leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
+    });
+    document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+    document.getElementById('total-ants').textContent = `Total Ants: ${leaderboardData.length}`;
+    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
+    if (window.currentScore > currentPlayerHighScore) {
+        document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
+        document.getElementById('new-high-score').style.display = 'block';
+    } else {
+        document.getElementById('new-high-score').style.display = 'none';
+    }
+}
+
+// New function for updating in-game leaderboard
+function updateInGameLeaderboard() {
+    return new Promise((resolve, reject) => {
+        const leaderboardRef = firebase.database().ref('users');
+        leaderboardRef.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
+            const leaderboardData = [];
+            snapshot.forEach((childSnapshot) => {
+                leaderboardData.unshift({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            
+            let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
+            leaderboardData.forEach((user, index) => {
+                const rank = index + 1;
+                const initials = user.name.charAt(0).toUpperCase();
+                const avatarHtml = `<div class="avatar">${initials}</div>`;
+                const isCurrentPlayer = user.id === window.telegramUser.id;
+                const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
+                leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
+            });
+            document.getElementById('in-game-leaderboard').innerHTML = leaderboardHtml;
+            resolve();
+        }, (error) => {
+            console.error("Error fetching in-game leaderboard data:", error);
+            reject(error);
+        });
+    });
+}
+
+// Countdown timer
+function updateCountdown() {
+    const now = new Date();
+    const target = new Date("2024-07-21T00:00:00Z");
+    
+    if (now >= target) {
+        document.getElementById('leaderboard-countdown').textContent = "Leaderboard reset is in progress!";
+        return;
+    }
+    
+    const timeLeft = target - now;
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    
+    document.getElementById('leaderboard-countdown').textContent = 
+        `Leaderboard resets in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
+function startCountdownTimer() {
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+}
