@@ -14,7 +14,7 @@ function onEngineLoad() {
             onGameCenterPostScore: function(score, leaderboard) {
                 console.log("Score posted:", score);
                 window.currentScore = score;
-                if (window.telegramUser) window.appFunctions.updateFirebaseScore(window.telegramUser.id, window.telegramUser.displayName, score);
+                window.appFunctions.updateFirebaseScore(score);
             },
             onGameCenterShowLeaderboard: function(leaderboard) {
                 console.log("Show leaderboard requested");
@@ -36,13 +36,7 @@ function onEngineLoad() {
             },
             onGameReady: function(width, height) {
                 console.log("Game ready. Width:", width, "Height:", height);
-                initializePlayer().then(() => {
-                    console.log("Player initialized, starting game");
-                    startGame();
-                }).catch(error => {
-                    console.error("Error initializing player:", error);
-                    window.appFunctions.handleError(error);
-                });
+                startGame();
             },
             onWindowResize: function() {
                 console.log("Window resized");
@@ -58,30 +52,6 @@ function onEngineLoad() {
             'viewport-fit': 'letterbox'
         });
         engine.loadOptionsFromURL();
-    });
-}
-
-// Initialize player function
-function initializePlayer() {
-    console.log("Initializing player");
-    return new Promise((resolve, reject) => {
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-            if (window.telegramUser) {
-                let displayName = window.appFunctions.getTelegramDisplayName(window.telegramUser);
-                window.telegramUser.displayName = displayName;
-                engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
-                    id: window.telegramUser.id,
-                    name: displayName
-                });
-                console.log("Player initialized:", displayName);
-                resolve();
-            } else {
-                reject("No Telegram user found");
-            }
-        } else {
-            reject("Telegram WebApp not available");
-        }
     });
 }
 
