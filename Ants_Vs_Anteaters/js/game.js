@@ -30,14 +30,14 @@ function onEngineLoad() {
                     if (window.telegramUser) {
                         let displayName = getTelegramDisplayName(window.telegramUser);
                         window.telegramUser.displayName = displayName;
-                        document.getElementById('telegram-username').textContent = displayName;
                         engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
                             id: window.telegramUser.id,
                             name: displayName
                         });
                     }
                 }
-                showStartOverlay();
+                // Start the game immediately
+                resumeGame();
             },
             onWindowResize: function() {
                 engine.relayout();
@@ -71,50 +71,6 @@ function updateFirebaseScore(userId, userName, score) {
     });
 }
 
-function updateLeaderboard() {
-    return new Promise((resolve, reject) => {
-        const leaderboardRef = firebase.database().ref('users');
-        leaderboardRef.orderByChild('score').once('value', (snapshot) => {
-            const leaderboardData = [];
-            snapshot.forEach((childSnapshot) => {
-                leaderboardData.unshift({
-                    id: childSnapshot.key,
-                    ...childSnapshot.val()
-                });
-            });
-            updateLeaderboardWithCurrentPlayer(leaderboardData);
-            resolve();
-        }, (error) => {
-            console.error("Error fetching leaderboard data:", error);
-            reject(error);
-        });
-    });
-}
-
-function updateLeaderboardWithCurrentPlayer(leaderboardData) {
-    let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
-    let currentPlayerHighScore = 0;
-    leaderboardData.forEach((user, index) => {
-        const rank = index + 1;
-        const initials = user.name.charAt(0).toUpperCase();
-        const avatarHtml = `<div class="avatar">${initials}</div>`;
-        const isCurrentPlayer = user.id === window.telegramUser.id;
-        const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
-        if (isCurrentPlayer) currentPlayerHighScore = user.score;
-        leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
-    });
-    document.getElementById('leaderboard').innerHTML = leaderboardHtml;
-    document.getElementById('total-ants').textContent = `Total Ants: ${leaderboardData.length}`;
-    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
-    if (window.currentScore > currentPlayerHighScore) {
-        document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
-        document.getElementById('new-high-score').style.display = 'block';
-    } else {
-        document.getElementById('new-high-score').style.display = 'none';
-    }
-}
-
-// New function for updating in-game leaderboard
 function updateInGameLeaderboard() {
     return new Promise((resolve, reject) => {
         const leaderboardRef = firebase.database().ref('users');

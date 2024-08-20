@@ -29,27 +29,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupEventListeners() {
-    document.getElementById('start-button').addEventListener('click', function() {
-        hideStartOverlay();
-        resumeGame();
-    });
-
-    document.getElementById('leaderboard-button').addEventListener('click', function() {
-        updateLeaderboard().then(() => {
-            hideStartOverlay();
-            showLeaderboardOverlay();
-        });
-    });
-
-    document.getElementById('back-to-start-button').addEventListener('click', function() {
-        hideLeaderboardOverlay();
-        showStartOverlay();
-    });
-
     document.getElementById('view-leaderboard-button').addEventListener('click', function() {
-        updateLeaderboard().then(() => {
+        updateInGameLeaderboard().then(() => {
             hideEndgameOverlay();
-            showLeaderboardOverlay();
+            showInGameLeaderboard();
         });
     });
 
@@ -63,11 +46,9 @@ function setupEventListeners() {
 
     document.getElementById('replay-button').addEventListener('click', function() {
         hideEndgameOverlay();
-        showStartOverlay();
         window.engine.postEvent('resetGame', null, null, null);
     });
 
-    // New event listener for closing in-game leaderboard
     document.getElementById('close-leaderboard-button').addEventListener('click', function() {
         hideInGameLeaderboard();
     });
@@ -82,23 +63,14 @@ function resumeGame() {
     if (window.engine) window.engine.play();
 }
 
-function showStartOverlay() {
+function showInGameLeaderboard() {
     pauseGame();
-    document.getElementById('start-overlay').style.display = 'flex';
+    document.getElementById('in-game-leaderboard-overlay').style.display = 'flex';
 }
 
-function hideStartOverlay() {
-    document.getElementById('start-overlay').style.display = 'none';
-}
-
-function showLeaderboardOverlay() {
-    pauseGame();
-    document.getElementById('leaderboard-overlay').style.display = 'flex';
-    startCountdownTimer();
-}
-
-function hideLeaderboardOverlay() {
-    document.getElementById('leaderboard-overlay').style.display = 'none';
+function hideInGameLeaderboard() {
+    document.getElementById('in-game-leaderboard-overlay').style.display = 'none';
+    resumeGame();
 }
 
 function showEndgameOverlay() {
@@ -109,15 +81,4 @@ function showEndgameOverlay() {
 
 function hideEndgameOverlay() {
     document.getElementById('endgame-overlay').style.display = 'none';
-}
-
-// New functions for in-game leaderboard
-function showInGameLeaderboard() {
-    pauseGame();
-    document.getElementById('in-game-leaderboard-overlay').style.display = 'flex';
-}
-
-function hideInGameLeaderboard() {
-    document.getElementById('in-game-leaderboard-overlay').style.display = 'none';
-    resumeGame();
 }
