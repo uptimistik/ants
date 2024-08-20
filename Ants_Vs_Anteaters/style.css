@@ -1,56 +1,102 @@
 body {
-  background-color: black;
-  color: white;
-  margin: 0;
-  padding: 0;
+    background-color: #000;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
 }
 
-#game-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, .8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    text-align: center;
+    z-index: 1000;
 }
 
-#username-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.8);
-  width: 100%;
-  height: 100%;
+h1, h2 {
+    margin-bottom: 20px;
 }
 
-#username-input {
-  margin: 10px;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  color: black;
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    margin: 10px;
 }
 
-#submit-username {
-  margin-top: 10px;
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-  background-color: #28a745;
-  color: white;
-  cursor: pointer;
-}
-
-#submit-username:hover {
-  background-color: #218838;
-}
-
-#game-content {
-  display: none;
-  width: 100%;
+#leaderboard-container {
+    height: 300px;
+    width: 80%;
+    overflow-y: auto;
+    margin: 20px 0;
+    border: 1px solid #4CAF50;
+    border-radius: 5px;
 }
 
 #leaderboard {
-  margin-top: 20px;
-  text-align: center;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#leaderboard th, #leaderboard td {
+    padding: 10px;
+    border-bottom: 1px solid #4CAF50;
+}
+
+#leaderboard td:first-child {
+    text-align: center;
+}
+
+#leaderboard td:nth-child(2) {
+    text-align: left;
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    color: #fff;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.current-player-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: #FFD700;
+    border-radius: 50%;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+#total-ants, #your-last-score, #leaderboard-countdown {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#leaderboard-countdown {
+    color: #FFD700;
+}
+
+#new-high-score {
+    color: #FFD700;
+    font-weight: bold;
+    margin-top: 10px;
 }

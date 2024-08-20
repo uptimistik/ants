@@ -1,77 +1,140 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const firebaseConfig = {
-    apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
-    authDomain: "antsgame-204c1.firebaseapp.com",
-    databaseURL: "https://antsgame-204c1-default-rtdb.firebaseio.com",
-    projectId: "antsgame-204c1",
-    storageBucket: "antsgame-204c1.appspot.com",
-    messagingSenderId: "580715522171",
-    appId: "1:580715522171:web:0bba6c6a16399dc3fe5ade",
-    measurementId: "G-E0JEEGY1GR"
-  };
+// Game engine logic
+function onEngineLoad() {
+    gse.ready(function(gseEngine) {
+        window.engine = gseEngine;
+        var loadingElement = document.getElementById('gse-loading');
+        var playerDelegate = {
+            onTouchPressed: function() {
+                if (navigator.vibrate) navigator.vibrate(50);
+            },
+            onGameCenterPostScore: function(score, leaderboard) {
+                window.currentScore = score;
+                if (window.telegramUser) updateFirebaseScore(window.telegramUser.id, window.telegramUser.displayName, score);
+            },
+            onGameCenterShowLeaderboard: function(leaderboard) {
+                updateLeaderboard().then(() => {
+                    showEndgameOverlay();
+                });
+            },
+            onLoadingBegin: function() {
+                engine.showOverlay();
+                loadingElement.style.visibility = 'visible';
+            },
+            onLoadingEnd: function() {
+                loadingElement.style.visibility = 'hidden';
+                engine.hideOverlay();
+            },
+            onGameReady: function(width, height) {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+                    if (window.telegramUser) {
+                        let displayName = getTelegramDisplayName(window.telegramUser);
+                        window.telegramUser.displayName = displayName;
+                        document.getElementById('telegram-username').textContent = displayName;
+                        engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
+                            id: window.telegramUser.id,
+                            name: displayName
+                        });
+                    }
+                }
+                showStartOverlay();
+            },
+            onWindowResize: function() {
+                engine.relayout();
+            }
+        };
 
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-
-  let userId = null;
-  let playerName = 'Unknown';
-
-  function showUsernameOverlay() {
-    document.getElementById('username-overlay').style.display = 'flex';
-    document.getElementById('game-content').style.display = 'none';
-  }
-
-  function hideUsernameOverlay() {
-    document.getElementById('username-overlay').style.display = 'none';
-    document.getElementById('game-content').style.display = 'block';
-  }
-
-  function saveUsernameToFirebase(username) {
-    if (userId) {
-      database.ref('users/' + userId).set({ username: username });
-    }
-  }
-
-  function saveScoreToFirebase(score) {
-    if (!playerName || playerName === 'Unknown') {
-      console.error('Username is required before saving score');
-      return;
-    }
-    const scoresRef = database.ref('scores');
-    const newScoreRef = scoresRef.push();
-    newScoreRef.set({
-      name: playerName,
-      score: score
+        engine.appendDelegate(playerDelegate);
+        window.addEventListener('resize', playerDelegate.onWindowResize, false);
+        engine.setRenderFrame('gse-player');
+        engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
+        });
+        engine.loadOptionsFromURL();
     });
-  }
+}
 
-  document.getElementById('submit-username').addEventListener('click', function() {
-    const usernameInput = document.getElementById('username-input').value;
-    if (usernameInput) {
-      playerName = usernameInput;
-      saveUsernameToFirebase(usernameInput);
-      hideUsernameOverlay();
-      // Initialize or start the game here
-    }
-  });
-
-  // Initialize Telegram Web App
-  window.Telegram.WebApp.ready(() => {
-    const user = window.Telegram.WebApp.initDataUnsafe.user;
-    if (user && user.id) {
-      userId = user.id;
-      database.ref('users/' + userId).once('value').then(snapshot => {
+// Leaderboard functionality
+function updateFirebaseScore(userId, userName, score) {
+    const userRef = firebase.database().ref('users/' + userId);
+    userRef.once('value').then((snapshot) => {
         const userData = snapshot.val();
-        if (userData && userData.username) {
-          playerName = userData.username;
-          hideUsernameOverlay();
-          // Initialize or start the game here
-        } else {
-          showUsernameOverlay();
+        if (!userData || userData.score < score) {
+            userRef.set({
+                id: userId,
+                name: userName,
+                score: score
+            });
         }
-      });
+        window.lastScore = score;
+    });
+}
+
+function updateLeaderboard() {
+    return new Promise((resolve, reject) => {
+        const leaderboardRef = firebase.database().ref('users');
+        leaderboardRef.orderByChild('score').once('value', (snapshot) => {
+            const leaderboardData = [];
+            snapshot.forEach((childSnapshot) => {
+                leaderboardData.unshift({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            updateLeaderboardWithCurrentPlayer(leaderboardData);
+            resolve();
+        }, (error) => {
+            console.error("Error fetching leaderboard data:", error);
+            reject(error);
+        });
+    });
+}
+
+function updateLeaderboardWithCurrentPlayer(leaderboardData) {
+    let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
+    let currentPlayerHighScore = 0;
+    leaderboardData.forEach((user, index) => {
+        const rank = index + 1;
+        const initials = user.name.charAt(0).toUpperCase();
+        const avatarHtml = `<div class="avatar">${initials}</div>`;
+        const isCurrentPlayer = user.id === window.telegramUser.id;
+        const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
+        if (isCurrentPlayer) currentPlayerHighScore = user.score;
+        leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
+    });
+    document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+    document.getElementById('total-ants').textContent = `Total Ants: ${leaderboardData.length}`;
+    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
+    if (window.currentScore > currentPlayerHighScore) {
+        document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
+        document.getElementById('new-high-score').style.display = 'block';
     } else {
-      showUsernameOverlay();
+        document.getElementById('new-high-score').style.display = 'none';
     }
-  });
-});
+}
+
+// Countdown timer
+function updateCountdown() {
+    const now = new Date();
+    const target = new Date("2024-07-21T00:00:00Z");
+    
+    if (now >= target) {
+        document.getElementById('leaderboard-countdown').textContent = "Leaderboard reset is in progress!";
+        return;
+    }
+    
+    const timeLeft = target - now;
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    
+    document.getElementById('leaderboard-countdown').textContent = 
+        `Leaderboard resets in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
+function startCountdownTimer() {
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+}
