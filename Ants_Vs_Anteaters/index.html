@@ -1,61 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Colony Clash - $ANT</title>
     <link rel="stylesheet" type="text/css" href="css/gse-style.css"/>
     <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css"/>
     <link rel="stylesheet" type="text/css" href="css/styles.css"/>
 </head>
 <body>
-    <div id="gse-player" class="gse-frame">
-        <div class="gse-overlay">
-            <div id="gse-text" class="gse-dialog">
-                <div>
-                    <button id="gse-text-cancel">Cancel</button>
-                    <button id="gse-text-done">Done</button>
-                    <p id="gse-text-prompt"></p>
-                </div>
-                <div>
-                    <textarea id="gse-text-input"></textarea>
+    <div id="game-container">
+        <div id="game-content">
+            <div id="gse-player" class="gse-frame">
+                <div class="gse-overlay">
+                    <div id="gse-text" class="gse-dialog">
+                        <div>
+                            <button id="gse-text-cancel">Cancel</button>
+                            <button id="gse-text-done">Done</button>
+                            <p id="gse-text-prompt"></p>
+                        </div>
+                        <div>
+                            <textarea id="gse-text-input"></textarea>
+                        </div>
+                    </div>
+                    <div id="gse-loading" style="visibility:hidden;">
+                        <img src="images/gse-loading.png" alt="Loading..."/>
+                    </div>
                 </div>
             </div>
-            <div id="gse-loading" style="visibility:visible;">
-                <img src="images/gse-loading.png"/>
+        </div>
+
+        <div id="leaderboard-overlay" class="overlay">
+            <h2>Ant Leaderboard</h2>
+            <div id="total-ants"></div>
+            <div id="your-last-score"></div>
+            <div id="leaderboard-countdown"></div>
+            <div id="leaderboard-container">
+                <table id="leaderboard">
+                    <tr><th>Rank</th><th>Score</th></tr>
+                </table>
             </div>
+            <button id="close-leaderboard-button">Close</button>
+        </div>
+
+        <div id="endgame-overlay" class="overlay">
+            <h2>Game Over</h2>
+            <div id="final-score"></div>
+            <div id="new-high-score" style="display:none;"></div>
+            <button id="view-leaderboard-button">View Leaderboard</button>
+            <button id="replay-button">Play Again</button>
+        </div>
+
+        <div id="in-game-leaderboard-overlay" class="overlay">
+            <h2>Current Leaderboard</h2>
+            <div id="in-game-leaderboard-container">
+                <table id="in-game-leaderboard">
+                    <tr><th>Rank</th><th>Score</th></tr>
+                </table>
+            </div>
+            <button id="close-in-game-leaderboard-button">Close</button>
         </div>
     </div>
-    <div id="leaderboard-overlay" class="overlay" style="display:none;">
-        <h2>Ant Leaderboard</h2>
-        <div id="total-ants"></div>
-        <div id="your-last-score"></div>
-        <div id="leaderboard-countdown"></div>
-        <div id="leaderboard-container">
-            <table id="leaderboard">
-                <tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>
-            </table>
-        </div>
-        <button id="back-to-start-button">Close</button>
-    </div>
-    <div id="endgame-overlay" class="overlay" style="display:none;">
-        <h2>Game Over</h2>
-        <div id="final-score"></div>
-        <div id="new-high-score" style="display:none;"></div>
-        <button id="view-leaderboard-button">View Leaderboard</button>
-        <button id="share-button">Share</button>
-        <button id="replay-button">Play Again</button>
-    </div>
-    <!-- Add this new div for the in-game leaderboard overlay -->
-<div id="in-game-leaderboard-overlay" class="overlay" style="display:none;">
-    <h2>Ant Leaderboard</h2>
-    <div id="in-game-leaderboard-container">
-        <table id="in-game-leaderboard">
-            <tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>
-        </table>
-    </div>
-    <button id="close-leaderboard-button">Close</button>
-</div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
