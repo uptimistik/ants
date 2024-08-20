@@ -100,3 +100,25 @@ button {
     font-weight: bold;
     margin-top: 10px;
 }
+#in-game-leaderboard-overlay {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+#in-game-leaderboard-container {
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 20px 0;
+    border: 1px solid #4CAF50;
+    border-radius: 5px;
+}
+
+#close-leaderboard-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+}
