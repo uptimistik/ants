@@ -13,18 +13,13 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 // Utility functions
-function getTelegramDisplayName(user) {
-    let displayName = user.username;
-    if (!displayName) {
-        displayName = user.first_name;
-        if (user.last_name) displayName += ' ' + user.last_name;
-    }
-    return displayName;
+function getUniquePlayerId() {
+    // Generate a unique player ID to avoid duplicates
+    return 'player-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
 }
 
 // App initialization and event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    window.Telegram.WebApp.ready();
     setupEventListeners();
 });
 
@@ -46,25 +41,20 @@ function setupEventListeners() {
         showStartOverlay();
     });
 
-    document.getElementById('view-leaderboard-button').addEventListener('click', function() {
-        updateLeaderboard().then(() => {
-            hideEndgameOverlay();
+    document.getElementById('close-leaderboard-button').addEventListener('click', function() {
+        hideLeaderboardOverlay();
+        resumeGame();
+    });
+
+    document.getElementById('save-username-button').addEventListener('click', function() {
+        const usernameInput = document.getElementById('username-input');
+        const username = usernameInput.value.trim();
+        if (username) {
+            const playerId = getUniquePlayerId();
+            updateFirebaseScore(playerId, username, window.currentScore);
+            hideUsernameOverlay();
             showLeaderboardOverlay();
-        });
-    });
-
-    document.getElementById('share-button').addEventListener('click', function() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const shareText = encodeURIComponent(`I just scored ${window.currentScore} kills in Ant Game! Can you beat me?`);
-            const shareUrl = `https://t.me/share/url?url=https://t.me/@Antsgame_bot&text=${shareText}`;
-            window.Telegram.WebApp.openTelegramLink(shareUrl);
         }
-    });
-
-    document.getElementById('replay-button').addEventListener('click', function() {
-        hideEndgameOverlay();
-        showStartOverlay();
-        window.engine.postEvent('resetGame', null, null, null);
     });
 }
 
@@ -89,11 +79,19 @@ function hideStartOverlay() {
 function showLeaderboardOverlay() {
     pauseGame();
     document.getElementById('leaderboard-overlay').style.display = 'flex';
-    startCountdownTimer();
 }
 
 function hideLeaderboardOverlay() {
     document.getElementById('leaderboard-overlay').style.display = 'none';
+}
+
+function showUsernameOverlay() {
+    pauseGame();
+    document.getElementById('username-overlay').style.display = 'flex';
+}
+
+function hideUsernameOverlay() {
+    document.getElementById('username-overlay').style.display = 'none';
 }
 
 function showEndgameOverlay() {
@@ -104,4 +102,116 @@ function showEndgameOverlay() {
 
 function hideEndgameOverlay() {
     document.getElementById('endgame-overlay').style.display = 'none';
+}
+
+// Leaderboard functionality
+function updateFirebaseScore(playerId, username, score) {
+    const userRef = firebase.database().ref('users/' + playerId);
+    userRef.set({
+        id: playerId,
+        name: username,
+        score: score
+    });
+    window.lastScore = score;
+}
+
+function updateLeaderboard() {
+    return new Promise((resolve, reject) => {
+        const leaderboardRef = firebase.database().ref('users');
+        leaderboardRef.orderByChild('score').once('value', (snapshot) => {
+            const leaderboardData = [];
+            snapshot.forEach((childSnapshot) => {
+                leaderboardData.unshift({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            updateLeaderboardDisplay(leaderboardData);
+            resolve();
+        }, (error) => {
+            console.error("Error fetching leaderboard data:", error);
+            reject(error);
+        });
+    });
+}
+
+function updateLeaderboardDisplay(leaderboardData) {
+    let leaderboardHtml = '<tr><th>Rank</th><th>Player Name</th><th>Top Kills</th></tr>';
+    let currentPlayerHighScore = 0;
+    leaderboardData.forEach((user, index) => {
+        const rank = index + 1;
+        const initials = user.name.charAt(0).toUpperCase();
+        const avatarHtml = `<div class="avatar">${initials}</div>`;
+        const isCurrentPlayer = window.playerId === user.id;
+        const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
+        if (isCurrentPlayer) currentPlayerHighScore = user.score;
+        leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
+    });
+    document.getElementById('leaderboard').innerHTML = leaderboardHtml;
+    document.getElementById('total-ants').textContent = `Total Players: ${leaderboardData.length}`;
+    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
+    if (window.currentScore > currentPlayerHighScore) {
+        document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
+        document.getElementById('new-high-score').style.display = 'block';
+    } else {
+        document.getElementById('new-high-score').style.display = 'none';
+    }
+}
+
+// Game engine logic
+function onEngineLoad() {
+    gse.ready(function(gseEngine) {
+        window.engine = gseEngine;
+        var loadingElement = document.getElementById('gse-loading');
+        var playerDelegate = {
+            onTouchPressed: function() {
+                if (navigator.vibrate) navigator.vibrate(50);
+            },
+            onGameCenterPostScore: function(score, leaderboard) {
+                window.currentScore = score;
+                if (window.playerId) updateFirebaseScore(window.playerId, window.playerName, score);
+            },
+            onGameCenterShowLeaderboard: function(leaderboard) {
+                updateLeaderboard().then(() => {
+                    if (window.playerId) {
+                        showLeaderboardOverlay();
+                    } else {
+                        showUsernameOverlay();
+                    }
+                });
+            },
+            onLoadingBegin: function() {
+                engine.showOverlay();
+                loadingElement.style.visibility = 'visible';
+            },
+            onLoadingEnd: function() {
+                loadingElement.style.visibility = 'hidden';
+                engine.hideOverlay();
+            },
+            onGameReady: function(width, height) {
+                // Check if the player has a stored ID and name
+                const storedPlayerId = localStorage.getItem('playerId');
+                const storedPlayerName = localStorage.getItem('playerName');
+                if (storedPlayerId && storedPlayerName) {
+                    window.playerId = storedPlayerId;
+                    window.playerName = storedPlayerName;
+                } else {
+                    showUsernameOverlay();
+                }
+                showStartOverlay();
+            },
+            onWindowResize: function() {
+                engine.relayout();
+            }
+        };
+
+        engine.appendDelegate(playerDelegate);
+        window.addEventListener('resize', playerDelegate.onWindowResize, false);
+        engine.setRenderFrame('gse-player');
+        engine.setOptions({
+            'viewport-reference': 'window',
+            'viewport-fit': 'letterbox'
+        });
+        engine.loadOptionsFromURL();
+    });
 }
