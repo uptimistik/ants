@@ -66,11 +66,6 @@ function setupEventListeners() {
         showStartOverlay();
         window.engine.postEvent('resetGame', null, null, null);
     });
-
-    // New event listener for closing in-game leaderboard
-    document.getElementById('close-leaderboard-button').addEventListener('click', function() {
-        hideInGameLeaderboard();
-    });
 }
 
 // Game state management functions
@@ -109,15 +104,4 @@ function showEndgameOverlay() {
 
 function hideEndgameOverlay() {
     document.getElementById('endgame-overlay').style.display = 'none';
-}
-
-// New functions for in-game leaderboard
-function showInGameLeaderboard() {
-    pauseGame();
-    document.getElementById('in-game-leaderboard-overlay').style.display = 'flex';
-}
-
-function hideInGameLeaderboard() {
-    document.getElementById('in-game-leaderboard-overlay').style.display = 'none';
-    resumeGame();
 }
