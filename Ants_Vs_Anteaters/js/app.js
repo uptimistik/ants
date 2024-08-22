@@ -1,3 +1,5 @@
+console.log("app.js file loaded");
+
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCeS_7ev8inI1yvzkljhJn_IU7z5cJIp9k",
@@ -11,6 +13,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+    firebase.initializeApp(firebaseConfig);
+    console.log("Firebase initialized successfully");
+} catch (error) {
+    console.error("Error initializing Firebase:", error);
+}
 
-console.log("Firebase initialized");
+console.log("End of app.js file reached");
