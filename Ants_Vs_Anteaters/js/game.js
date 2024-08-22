@@ -1,24 +1,16 @@
 (function() {
-    var engine = null;
-
     function onEngineLoad() {
-        console.log("Engine load started");
-        gse.ready(function(gseEngine) {
-            console.log("GSE ready");
-            engine = gseEngine;
-            var loadingElement = document.getElementById('gse-loading');
+        if (typeof gse === 'undefined') {
+            console.error('GSE not loaded');
+            return;
+        }
+        
+        gse.ready(function(engine) {
+            console.log('GSE ready');
             
             var playerDelegate = {
-                onLoadingBegin: function() {
-                    engine.showOverlay();
-                    loadingElement.style.visibility = 'visible';
-                },
-                onLoadingEnd: function() {
-                    loadingElement.style.visibility = 'hidden';
-                    engine.hideOverlay();
-                },
                 onGameReady: function(width, height) {
-                    console.log("Game ready");
+                    console.log('Game ready');
                     engine.play();
                 }
             };
