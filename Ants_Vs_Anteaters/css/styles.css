@@ -36,12 +36,6 @@ button {
     margin: 10px;
 }
 
-input[type="text"] {
-    padding: 10px;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
 #leaderboard-container {
     height: 300px;
     width: 80%;
@@ -92,7 +86,7 @@ input[type="text"] {
     vertical-align: middle;
 }
 
-#total-players, #your-last-score, #leaderboard-countdown {
+#total-ants, #your-last-score, #leaderboard-countdown {
     font-size: 14px;
     margin-bottom: 10px;
 }
