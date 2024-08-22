@@ -190,7 +190,16 @@ body {
     function showCreateUsernameOverlay(identifier) {
         localStorage.setItem('pendingLeaderboardIdentifier', identifier);
         document.getElementById('username-overlay').style.display = 'block';
-        document.getElementById('username-input').focus();
+
+        // Explicitly set focus to the input field
+        setTimeout(function() {
+            document.getElementById('username-input').focus();
+        }, 100);
+
+        // Disable game input handlers to prevent interference
+        if (gameEngine && gameEngine.pauseGame) {
+            gameEngine.pauseGame();
+        }
     }
 
     function createUsername(username) {
@@ -208,6 +217,10 @@ body {
             }
         }).catch(function(error) {
             console.error("Error creating user:", error);
+        }).finally(function() {
+            if (gameEngine && gameEngine.playGame) {
+                gameEngine.playGame();
+            }
         });
     }
 
