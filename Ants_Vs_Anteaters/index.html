@@ -4,94 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AntsTheGame</title>
-    <link rel="stylesheet" type="text/css" href="css/styles.css">
+    <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
+    <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
 </head>
 <body>
     <div id="gse-player" class="gse-frame">
-        <!-- The engine will create and insert drawing elements here. -->
         <div class="gse-overlay">
-            <div id="gse-text" class="gse-dialog">
-                <div>
-                    <button id="gse-text-cancel">Cancel</button>
-                    <button id="gse-text-done">Done</button>
-                    <p id="gse-text-prompt"></p>
-                </div>
-                <div>
-                    <textarea id="gse-text-input"></textarea>
-                </div>
-            </div>
-            <div id="gse-browser" class="gse-dialog">           
-                <iframe id="gse-browser-frame"></iframe>
-                <button id="gse-browser-close" href="#">&#10006;</button>
-            </div>
             <div id="gse-loading" style="visibility: visible;">
                 <img src="images/gse-loading.png" alt="Loading..." />
             </div>
         </div>
     </div>
 
-    <!-- Leaderboard Overlay -->
-    <div id="leaderboard-overlay" class="overlay">
-        <div class="leaderboard-content">
-            <h2>Ant Leaderboard</h2>
-            <p id="total-ants">Total Ants: <span></span></p>
-            <p id="your-last-score">Your Last Score: <span></span></p>
-            <p id="leaderboard-status" class="yellow-text">Leaderboard reset is in progress!</p>
-            <table id="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Ant Name</th>
-                        <th>Top Kills</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Leaderboard entries will be inserted here dynamically -->
-                </tbody>
-            </table>
-            <button id="leaderboard-back-btn">Back</button>
-        </div>
-    </div>
-
-    <!-- Username Creation Overlay -->
-    <div id="username-overlay" class="overlay">
-        <div class="username-content">
-            <h2>Create Your Ant Name</h2>
-            <p>Choose a unique name for your ant to join the leaderboard!</p>
-            <input type="text" id="username-input" placeholder="Enter your ant name" maxlength="15">
-            <p id="username-error" class="error-text"></p>
-            <button id="username-submit-btn">Submit</button>
-        </div>
-    </div>
-
-    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-
-    <!-- Add Firebase products that you want to use -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <!-- Your app's Firebase configuration -->
-    <script src="js/app.js"></script>
-
-    <!-- GameSalad engine script -->
     <script type="text/javascript" src="js/gse/gse-export.js"></script>
-
-
-
     <script type="text/javascript">
-        (function(global) {
-            global.onEngineLoad = function() {
-                gse.ready(function(engine) {
-                    engine.setRenderFrame('gse-player');
-                    engine.setOptions({
-                        'viewport-reference': 'window',
-                        'viewport-fit': 'letterbox'
-                    });
-                    engine.loadOptionsFromURL();
-                    engine.play();
-                });
-            };
-        }(window));
+    window.onEngineLoad = function () {
+        gse.ready(function (engine) {
+            var loadingElement = document.getElementById('gse-loading');
+            const playerDelegate = {
+                onLoadingBegin: function() {
+                    console.log("Loading begin.");
+                    engine.showOverlay();
+                    loadingElement.style.visibility = 'visible';
+                },
+                onLoadingEnd: function() {
+                    loadingElement.style.visibility = 'hidden';
+                    engine.hideOverlay();
+                }
+            }
+            engine.appendDelegate(playerDelegate);
+
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+                'viewport-reference': 'window',
+                'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+            engine.load(); // This loads the game
+        });
+    }
     </script>
 </body>
 </html>
