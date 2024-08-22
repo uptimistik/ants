@@ -21,7 +21,57 @@ function loadPlayerData() {
     }
 }
 
-// ... [keep the rest of your game.js file as is] ...
+// UI management functions
+function showUsernameOverlay() {
+    console.log("Showing username overlay");
+    const usernameOverlay = document.getElementById('username-overlay');
+    if (usernameOverlay) usernameOverlay.style.display = 'flex';
+}
+
+function hideUsernameOverlay() {
+    console.log("Hiding username overlay");
+    const usernameOverlay = document.getElementById('username-overlay');
+    if (usernameOverlay) usernameOverlay.style.display = 'none';
+}
+
+function showLeaderboardOverlay() {
+    console.log("Showing leaderboard overlay");
+    const leaderboardOverlay = document.getElementById('leaderboard-overlay');
+    if (leaderboardOverlay) leaderboardOverlay.style.display = 'flex';
+}
+
+function hideLeaderboardOverlay() {
+    console.log("Hiding leaderboard overlay");
+    const leaderboardOverlay = document.getElementById('leaderboard-overlay');
+    if (leaderboardOverlay) leaderboardOverlay.style.display = 'none';
+}
+
+// Leaderboard functionality
+function updateFirebaseScore(playerId, playerName, score) {
+    console.log("Updating Firebase score", { playerId, playerName, score });
+    // ... rest of the function ...
+}
+
+function updateLeaderboard() {
+    console.log("Updating leaderboard");
+    // ... rest of the function ...
+}
+
+function updateLeaderboardDisplay(leaderboardData) {
+    console.log("Updating leaderboard display", leaderboardData);
+    // ... rest of the function ...
+}
+
+// Countdown timer
+function updateCountdown() {
+    // ... existing function ...
+}
+
+function startCountdownTimer() {
+    console.log("Starting countdown timer");
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+}
 
 // Event listeners and initialization
 document.addEventListener('DOMContentLoaded', function() {
