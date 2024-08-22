@@ -13,6 +13,4 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-document.addEventListener('DOMContentLoaded', function() {
-    window.Telegram.WebApp.ready();
-});
+console.log("Firebase initialized");
