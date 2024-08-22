@@ -102,12 +102,14 @@ body {
 
 <script type="text/javascript">
 (function() {
+    let gameEngine;
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
 
     window.onEngineLoad = function() {
         gse.ready(function(engine) {
+            gameEngine = engine;
             var loadingElement = document.getElementById('gse-loading');
             var playerDelegate = {
                 onLoadingBegin: function() {
@@ -136,6 +138,7 @@ body {
 
             document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
                 document.getElementById('leaderboard-overlay').style.display = 'none';
+                resumeGame();
             });
 
             document.getElementById('username-submit-btn').addEventListener('click', function() {
@@ -155,11 +158,24 @@ body {
         });
     };
 
+    function pauseGame() {
+        if (gameEngine && gameEngine.pauseGame) {
+            gameEngine.pauseGame();
+        }
+    }
+
+    function resumeGame() {
+        if (gameEngine && gameEngine.playGame) {
+            gameEngine.playGame();
+        }
+    }
+
     function isPlayerRegistered() {
         return localStorage.getItem('antUsername') !== null;
     }
 
     function displayLeaderboard(identifier) {
+        pauseGame();
         firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
             .then(function(snapshot) {
                 var leaderboardData = [];
@@ -171,6 +187,7 @@ body {
             })
             .catch(function(error) {
                 console.error("Error fetching leaderboard data:", error);
+                resumeGame();
             });
     }
 
@@ -186,9 +203,12 @@ body {
     }
 
     function showCreateUsernameOverlay(identifier) {
+        pauseGame();
         localStorage.setItem('pendingLeaderboardIdentifier', identifier);
         document.getElementById('username-overlay').style.display = 'block';
-        document.getElementById('username-input').focus();
+        setTimeout(() => {
+            document.getElementById('username-input').focus();
+        }, 100);
     }
 
     function createUsername(username) {
@@ -203,11 +223,36 @@ body {
             if (pendingIdentifier) {
                 localStorage.removeItem('pendingLeaderboardIdentifier');
                 displayLeaderboard(pendingIdentifier);
+            } else {
+                resumeGame();
             }
         }).catch(function(error) {
             console.error("Error creating user:", error);
+            resumeGame();
         });
     }
+
+    document.getElementById('username-overlay').addEventListener('click', function(event) {
+        if (event.target === this) {
+            this.style.display = 'none';
+            resumeGame();
+        }
+    });
+
+    document.getElementById('leaderboard-overlay').addEventListener('click', function(event) {
+        if (event.target === this) {
+            this.style.display = 'none';
+            resumeGame();
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.getElementById('username-overlay').style.display = 'none';
+            document.getElementById('leaderboard-overlay').style.display = 'none';
+            resumeGame();
+        }
+    });
 })();
 </script>
 
