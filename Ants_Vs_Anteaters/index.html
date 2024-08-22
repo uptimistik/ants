@@ -1,29 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ant Game</title>
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        #gse-player {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+<meta charset="utf-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Ant Game</title>
+<link rel="stylesheet" type="text/css" href="css/gse-style.css"/>
+<link rel="stylesheet" type="text/css" href="css/gse-style-loading.css"/>
 </head>
 <body>
-    <div id="gse-player"></div>
-    <script type="text/javascript" src="js/gse/gse-export.js"></script>
-    <script type="text/javascript" src="js/game.js"></script>
+<div id="gse-player" class="gse-frame">
+<div class="gse-overlay">
+<div id="gse-text" class="gse-dialog">
+<div>
+<button>Cancel</button>
+<button>Done</button>
+</div>
+<div>
+</div>
+</div>
+<div id="gse-loading" style="visibility:visible;">
+<img src="images/gse-loading.png"/>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+<script>
+(function(global) {
+    var currentScore = 0,
+        lastScore = 0,
+        engine = null;
+
+    global.onEngineLoad = function() {
+        gse.ready(function(gseEngine) {
+            engine = gseEngine;
+            var loadingElement = document.getElementById('gse-loading');
+            var playerDelegate = {
+                onTouchPressed: function() {
+                    if (navigator.vibrate) navigator.vibrate(50);
+                },
+                onGameCenterPostScore: function(score, leaderboard) {
+                    currentScore = score;
+                },
+                onGameCenterShowLeaderboard: function(leaderboard) {
+                    // Leaderboard functionality removed
+                },
+                onLoadingBegin: function() {
+                    engine.showOverlay();
+                    loadingElement.style.visibility = 'visible';
+                },
+                onLoadingEnd: function() {
+                    loadingElement.style.visibility = 'hidden';
+                    engine.hideOverlay();
+                },
+                onGameReady: function(width, height) {
+                    // Game is ready, start playing
+                    engine.play();
+                },
+                onWindowResize: function() {
+                    engine.relayout();
+                }
+            };
+
+            engine.appendDelegate(playerDelegate);
+            window.addEventListener('resize', playerDelegate.onWindowResize, false);
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+                'viewport-reference': 'window',
+                'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+        });
+    };
+})(window);
+</script>
 </body>
 </html>
