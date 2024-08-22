@@ -27,13 +27,42 @@ body {
                 <textarea id="gse-text-input"></textarea>
             </div>
         </div>
-        <div id="gse-browser" class="gse-dialog">           
+        <div id="gse-browser" class="gse-dialog">            
             <iframe id="gse-browser-frame"></iframe>
                 <button id="gse-browser-close" href="#">&#10006;</button>
         </div>
         <div id="gse-loading" style="visibility: visible;">
             <img src="images/gse-loading.png" />
         </div>
+    </div>
+</div>
+
+<!-- Leaderboard Overlay -->
+<div id="leaderboard-overlay" class="overlay" style="display: none;">
+    <div class="leaderboard-content">
+        <h2>Ant Leaderboard</h2>
+        <table id="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Ant Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Leaderboard entries will be inserted here dynamically -->
+            </tbody>
+        </table>
+        <button id="leaderboard-close-btn">Close</button>
+    </div>
+</div>
+
+<!-- Username Creation Overlay -->
+<div id="username-overlay" class="overlay" style="display: none;">
+    <div class="username-content">
+        <h2>Create Your Ant Name</h2>
+        <input type="text" id="username-input" placeholder="Enter your ant name">
+        <button id="username-submit-btn">Submit</button>
     </div>
 </div>
 
@@ -46,9 +75,15 @@ body {
 
 <script type="text/javascript">
 (function(global) {
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
     global.onEngineLoad = function() {
         gse.ready(function(engine) {
             var loadingElement = document.getElementById('gse-loading');
+            var leaderboardOverlay = document.getElementById('leaderboard-overlay');
+            var usernameOverlay = document.getElementById('username-overlay');
+
             var playerDelegate = {
                 onLoadingBegin: function() {
                     engine.showOverlay();
@@ -64,16 +99,28 @@ body {
                     engine.relayout();
                 },
 
-                onShowLeaderboard: function() {
+                onGameCenterShowLeaderboard: function(identifier) {
+                    console.log("Show Leaderboard requested with identifier:", identifier);
                     if (isPlayerRegistered()) {
-                        displayLeaderboard();
+                        displayLeaderboard(identifier);
                     } else {
-                        showCreateUsernameOverlay();
+                        showCreateUsernameOverlay(identifier);
                     }
                 }
             };
             engine.appendDelegate(playerDelegate);
             window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+            document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
+                leaderboardOverlay.style.display = 'none';
+            });
+
+            document.getElementById('username-submit-btn').addEventListener('click', function() {
+                var username = document.getElementById('username-input').value.trim();
+                if (username) {
+                    createUsername(username);
+                }
+            });
 
             engine.setRenderFrame('gse-player');
             engine.setOptions({
@@ -90,14 +137,55 @@ body {
         return localStorage.getItem('antUsername') !== null;
     }
 
-    function displayLeaderboard() {
-        // Implement leaderboard display logic here
-        console.log("Displaying leaderboard");
+    function displayLeaderboard(identifier) {
+        console.log("Displaying leaderboard for identifier:", identifier);
+        firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
+            .then(function(snapshot) {
+                var leaderboardData = [];
+                snapshot.forEach(function(childSnapshot) {
+                    leaderboardData.unshift(childSnapshot.val());
+                });
+                populateLeaderboard(leaderboardData);
+                document.getElementById('leaderboard-overlay').style.display = 'flex';
+            })
+            .catch(function(error) {
+                console.error("Error fetching leaderboard data:", error);
+            });
     }
 
-    function showCreateUsernameOverlay() {
-        // Implement username creation overlay logic here
-        console.log("Showing create username overlay");
+    function populateLeaderboard(data) {
+        var leaderboardBody = document.querySelector('#leaderboard-table tbody');
+        leaderboardBody.innerHTML = '';
+        data.forEach(function(entry, index) {
+            var row = leaderboardBody.insertRow();
+            row.insertCell(0).textContent = index + 1;
+            row.insertCell(1).textContent = entry.username;
+            row.insertCell(2).textContent = entry.score;
+        });
+    }
+
+    function showCreateUsernameOverlay(identifier) {
+        console.log("Showing create username overlay for identifier:", identifier);
+        localStorage.setItem('pendingLeaderboardIdentifier', identifier);
+        document.getElementById('username-overlay').style.display = 'flex';
+    }
+
+    function createUsername(username) {
+        firebase.database().ref('users').push({
+            username: username,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(function(ref) {
+            localStorage.setItem('antUsername', username);
+            localStorage.setItem('antUserId', ref.key);
+            document.getElementById('username-overlay').style.display = 'none';
+            var pendingIdentifier = localStorage.getItem('pendingLeaderboardIdentifier');
+            if (pendingIdentifier) {
+                localStorage.removeItem('pendingLeaderboardIdentifier');
+                displayLeaderboard(pendingIdentifier);
+            }
+        }).catch(function(error) {
+            console.error("Error creating user:", error);
+        });
     }
 
 }(window));
