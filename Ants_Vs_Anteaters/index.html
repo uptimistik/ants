@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<title>AntsTheGame</title>
+<title>Colony Clash $ANT</title>
 <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
 <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
 <style type="text/css">
@@ -125,10 +125,6 @@ body {
                 },
                 onGameCenterShowLeaderboard: function(identifier) {
                     console.log("Show Leaderboard requested with identifier:", identifier);
-
-                    // Pause the game when the leaderboard is requested
-                    pauseGame();
-
                     if (isPlayerRegistered()) {
                         displayLeaderboard(identifier);
                     } else {
@@ -179,6 +175,7 @@ body {
     }
 
     function displayLeaderboard(identifier) {
+        pauseGame();
         firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
             .then(function(snapshot) {
                 var leaderboardData = [];
@@ -190,7 +187,7 @@ body {
             })
             .catch(function(error) {
                 console.error("Error fetching leaderboard data:", error);
-                resumeGame(); // Resume game on error
+                resumeGame();
             });
     }
 
@@ -206,16 +203,12 @@ body {
     }
 
     function showCreateUsernameOverlay(identifier) {
+        pauseGame();
         localStorage.setItem('pendingLeaderboardIdentifier', identifier);
         document.getElementById('username-overlay').style.display = 'block';
-
-        // Explicitly set focus to the input field
-        setTimeout(function() {
+        setTimeout(() => {
             document.getElementById('username-input').focus();
         }, 100);
-
-        // Disable game input handlers to prevent interference
-        pauseGame();
     }
 
     function createUsername(username) {
@@ -230,31 +223,36 @@ body {
             if (pendingIdentifier) {
                 localStorage.removeItem('pendingLeaderboardIdentifier');
                 displayLeaderboard(pendingIdentifier);
+            } else {
+                resumeGame();
             }
         }).catch(function(error) {
             console.error("Error creating user:", error);
-        }).finally(function() {
             resumeGame();
         });
     }
 
-    // Pause and Resume Game when interacting with username input
-    const textInput = document.getElementById('gse-text-input');
-    const doneButton = document.getElementById('gse-text-done');
-    const cancelButton = document.getElementById('gse-text-cancel');
-
-    textInput.addEventListener('focus', function() {
-        pauseGame();
+    document.getElementById('username-overlay').addEventListener('click', function(event) {
+        if (event.target === this) {
+            this.style.display = 'none';
+            resumeGame();
+        }
     });
 
-    doneButton.addEventListener('click', function() {
-        resumeGame();
+    document.getElementById('leaderboard-overlay').addEventListener('click', function(event) {
+        if (event.target === this) {
+            this.style.display = 'none';
+            resumeGame();
+        }
     });
 
-    cancelButton.addEventListener('click', function() {
-        resumeGame();
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.getElementById('username-overlay').style.display = 'none';
+            document.getElementById('leaderboard-overlay').style.display = 'none';
+            resumeGame();
+        }
     });
-
 })();
 </script>
 
