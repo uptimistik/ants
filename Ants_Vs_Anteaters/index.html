@@ -1,283 +1,242 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>AntsTheGame</title>
-    <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
-    <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
-    <style type="text/css">
-        body {
-            background-color: black;
-            margin: 0;
-            padding: 0;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 10000;
-        }
-        .overlay-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10001;
-        }
-        #username-input {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            box-sizing: border-box;
-        }
-        #username-submit-btn {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>AntsTheGame</title>
+<link rel="stylesheet" type="text/css" href="css/gse-style.css" />
+<link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
+<style type="text/css">
+body {
+    background-color: black;
+    margin: 0;
+    padding: 0;
+}
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+}
+.overlay-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10001;
+}
+#username-input {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+}
+#username-submit-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+}
+</style>
 </head>
 <body>
-    <div id="gse-player" class="gse-frame">
-        <div class="gse-overlay">
-            <div id="gse-text" class="gse-dialog">
-                <div>
-                    <button id="gse-text-cancel">Cancel</button>
-                    <button id="gse-text-done">Done</button>
-                    <p id="gse-text-prompt">Enter Ant Name:</p>
-                </div>
-                <div>
-                    <textarea id="gse-text-input" placeholder="Enter your ant name here..."></textarea>
-                </div>
+<div id="gse-player" class="gse-frame">
+    <div class="gse-overlay">
+        <div id="gse-text" class="gse-dialog">
+            <div>
+                <button id="gse-text-cancel">Cancel</button>
+                <button id="gse-text-done">Done</button>
+                <p id="gse-text-prompt"></p>
             </div>
-            <div id="gse-browser" class="gse-dialog">            
-                <iframe id="gse-browser-frame"></iframe>
-                <button id="gse-browser-close" href="#">&#10006;</button>
-            </div>
-            <div id="gse-loading" style="visibility: visible;">
-                <img src="images/gse-loading.png" alt="Loading..."/>
+            <div>
+                <textarea id="gse-text-input"></textarea>
             </div>
         </div>
-    </div>
-
-    <div id="leaderboard-overlay" class="overlay">
-        <div class="overlay-content">
-            <h2>Ant Leaderboard</h2>
-            <table id="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Ant Name</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-            <button id="leaderboard-close-btn">Close</button>
+        <div id="gse-browser" class="gse-dialog">            
+            <iframe id="gse-browser-frame"></iframe>
+            <button id="gse-browser-close" href="#">&#10006;</button>
+        </div>
+        <div id="gse-loading" style="visibility: visible;">
+            <img src="images/gse-loading.png" />
         </div>
     </div>
+</div>
 
-    <div id="username-overlay" class="overlay">
-        <div class="overlay-content">
-            <h2>Create Your Ant Name</h2>
-            <input type="text" id="username-input" placeholder="Enter your ant name">
-            <button id="username-submit-btn">Submit</button>
-        </div>
+<div id="leaderboard-overlay" class="overlay">
+    <div class="overlay-content">
+        <h2>Ant Leaderboard</h2>
+        <table id="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Ant Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <button id="leaderboard-close-btn">Close</button>
     </div>
+</div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="js/app.js"></script>
+<div id="username-overlay" class="overlay">
+    <div class="overlay-content">
+        <h2>Create Your Ant Name</h2>
+        <input type="text" id="username-input" placeholder="Enter your ant name">
+        <button id="username-submit-btn">Submit</button>
+    </div>
+</div>
 
-    <script type="text/javascript">
-    (function() {
-        let gameEngine;
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="js/app.js"></script>
 
-        window.onEngineLoad = function() {
-            gse.ready(function(engine) {
-                gameEngine = engine;
-                var loadingElement = document.getElementById('gse-loading');
-                var playerDelegate = {
-                    onLoadingBegin: function() {
-                        engine.showOverlay();
-                        loadingElement.style.visibility = 'visible';
-                    },
-                    onLoadingEnd: function() {
-                        loadingElement.style.visibility = 'hidden';
-                        engine.hideOverlay();
-                    },
-                    onWindowResize: function() {
-                        engine.relayout();
-                    },
-                    onGameCenterShowLeaderboard: function(identifier) {
-                        console.log("Show Leaderboard requested with identifier:", identifier);
-                        if (isPlayerRegistered()) {
-                            displayLeaderboard(identifier);
-                        } else {
-                            showCreateUsernameOverlay(identifier);
-                        }
+<script type="text/javascript">
+(function() {
+    let gameEngine;
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+
+    window.onEngineLoad = function() {
+        gse.ready(function(engine) {
+            gameEngine = engine;
+            var loadingElement = document.getElementById('gse-loading');
+            var playerDelegate = {
+                onLoadingBegin: function() {
+                    engine.showOverlay();
+                    loadingElement.style.visibility = 'visible';
+                },
+                onLoadingEnd: function() {
+                    loadingElement.style.visibility = 'hidden';
+                    engine.hideOverlay();
+                },
+                onWindowResize: function() {
+                    engine.relayout();
+                },
+                onGameCenterShowLeaderboard: function(identifier) {
+                    console.log("Show Leaderboard requested with identifier:", identifier);
+                    if (isPlayerRegistered()) {
+                        displayLeaderboard(identifier);
+                    } else {
+                        showCreateUsernameOverlay(identifier);
                     }
-                };
-
-                engine.appendDelegate(playerDelegate);
-                window.addEventListener('resize', playerDelegate.onWindowResize, false);
-
-                document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
-                    document.getElementById('leaderboard-overlay').style.display = 'none';
-                    resumeGame();
-                });
-
-                document.getElementById('username-submit-btn').addEventListener('click', function() {
-                    var username = document.getElementById('username-input').value.trim();
-                    if (username) {
-                        createUsername(username);
-                    }
-                });
-
-                engine.setRenderFrame('gse-player');
-                engine.setOptions({
-                    'viewport-reference': 'window',
-                    'viewport-fit': 'letterbox'
-                });
-                engine.loadOptionsFromURL();
-                engine.play();
-            });
-        };
-
-        function pauseGame() {
-            if (gameEngine && gameEngine.pauseGame) {
-                gameEngine.pauseGame();
-            }
-        }
-
-        function resumeGame() {
-            if (gameEngine && gameEngine.playGame) {
-                gameEngine.playGame();
-            }
-        }
-
-        function isPlayerRegistered() {
-            return localStorage.getItem('antUsername') !== null;
-        }
-
-        function displayLeaderboard(identifier) {
-            pauseGame();
-            firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
-                .then(function(snapshot) {
-                    var leaderboardData = [];
-                    snapshot.forEach(function(childSnapshot) {
-                        leaderboardData.unshift(childSnapshot.val());
-                    });
-                    populateLeaderboard(leaderboardData);
-                    document.getElementById('leaderboard-overlay').style.display = 'block';
-                })
-                .catch(function(error) {
-                    console.error("Error fetching leaderboard data:", error);
-                    resumeGame();
-                });
-        }
-
-        function populateLeaderboard(data) {
-            var leaderboardBody = document.querySelector('#leaderboard-table tbody');
-            leaderboardBody.innerHTML = '';
-            data.forEach(function(entry, index) {
-                var row = leaderboardBody.insertRow();
-                row.insertCell(0).textContent = index + 1;
-                row.insertCell(1).textContent = entry.username;
-                row.insertCell(2).textContent = entry.score;
-            });
-        }
-
-        function showCreateUsernameOverlay(identifier) {
-            pauseGame();
-            localStorage.setItem('pendingLeaderboardIdentifier', identifier);
-            document.getElementById('username-overlay').style.display = 'block';
-            setTimeout(() => {
-                document.getElementById('username-input').focus();
-            }, 100);
-        }
-
-        function createUsername(username) {
-            firebase.database().ref('users').push({
-                username: username,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            }).then(function(ref) {
-                localStorage.setItem('antUsername', username);
-                localStorage.setItem('antUserId', ref.key);
-                document.getElementById('username-overlay').style.display = 'none';
-                var pendingIdentifier = localStorage.getItem('pendingLeaderboardIdentifier');
-                if (pendingIdentifier) {
-                    localStorage.removeItem('pendingLeaderboardIdentifier');
-                    displayLeaderboard(pendingIdentifier);
-                } else {
-                    resumeGame();
                 }
-            }).catch(function(error) {
-                console.error("Error creating user:", error);
-                resumeGame();
-            });
-        }
+            };
 
-        document.getElementById('username-overlay').addEventListener('click', function(event) {
-            if (event.target === this) {
-                this.style.display = 'none';
-                resumeGame();
-            }
-        });
+            engine.appendDelegate(playerDelegate);
+            window.addEventListener('resize', playerDelegate.onWindowResize, false);
 
-        document.getElementById('leaderboard-overlay').addEventListener('click', function(event) {
-            if (event.target === this) {
-                this.style.display = 'none';
-                resumeGame();
-            }
-        });
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                document.getElementById('username-overlay').style.display = 'none';
+            document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
                 document.getElementById('leaderboard-overlay').style.display = 'none';
-                resumeGame();
+            });
+
+            document.getElementById('username-submit-btn').addEventListener('click', function() {
+                var username = document.getElementById('username-input').value.trim();
+                if (username) {
+                    createUsername(username);
+                }
+            });
+
+            engine.setRenderFrame('gse-player');
+            engine.setOptions({
+                'viewport-reference': 'window',
+                'viewport-fit': 'letterbox'
+            });
+            engine.loadOptionsFromURL();
+            engine.play();
+        });
+    };
+
+    function isPlayerRegistered() {
+        return localStorage.getItem('antUsername') !== null;
+    }
+
+    function displayLeaderboard(identifier) {
+        firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
+            .then(function(snapshot) {
+                var leaderboardData = [];
+                snapshot.forEach(function(childSnapshot) {
+                    leaderboardData.unshift(childSnapshot.val());
+                });
+                populateLeaderboard(leaderboardData);
+                document.getElementById('leaderboard-overlay').style.display = 'block';
+            })
+            .catch(function(error) {
+                console.error("Error fetching leaderboard data:", error);
+            });
+    }
+
+    function populateLeaderboard(data) {
+        var leaderboardBody = document.querySelector('#leaderboard-table tbody');
+        leaderboardBody.innerHTML = '';
+        data.forEach(function(entry, index) {
+            var row = leaderboardBody.insertRow();
+            row.insertCell(0).textContent = index + 1;
+            row.insertCell(1).textContent = entry.username;
+            row.insertCell(2).textContent = entry.score;
+        });
+    }
+
+    function showCreateUsernameOverlay(identifier) {
+        localStorage.setItem('pendingLeaderboardIdentifier', identifier);
+        document.getElementById('username-overlay').style.display = 'block';
+        document.getElementById('username-input').focus();
+    }
+
+    function createUsername(username) {
+        firebase.database().ref('users').push({
+            username: username,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(function(ref) {
+            localStorage.setItem('antUsername', username);
+            localStorage.setItem('antUserId', ref.key);
+            document.getElementById('username-overlay').style.display = 'none';
+            var pendingIdentifier = localStorage.getItem('pendingLeaderboardIdentifier');
+            if (pendingIdentifier) {
+                localStorage.removeItem('pendingLeaderboardIdentifier');
+                displayLeaderboard(pendingIdentifier);
             }
+        }).catch(function(error) {
+            console.error("Error creating user:", error);
         });
+    }
 
-        // Additional event listeners for pausing and resuming the game when interacting with the text input
-        const textInput = document.getElementById('gse-text-input');
-        const doneButton = document.getElementById('gse-text-done');
-        const cancelButton = document.getElementById('gse-text-cancel');
+    // Pause and Resume Game when interacting with username input
+    const textInput = document.getElementById('gse-text-input');
+    const doneButton = document.getElementById('gse-text-done');
+    const cancelButton = document.getElementById('gse-text-cancel');
 
-        textInput.addEventListener('focus', function() {
-            pauseGame();
-        });
+    textInput.addEventListener('focus', function() {
+        if (gameEngine && gameEngine.pauseGame) {
+            gameEngine.pauseGame();
+        }
+    });
 
-        textInput.addEventListener('input', function() {
-            pauseGame();
-        });
+    doneButton.addEventListener('click', function() {
+        if (gameEngine && gameEngine.playGame) {
+            gameEngine.playGame();
+        }
+    });
 
-        doneButton.addEventListener('click', function() {
-            resumeGame();
-        });
+    cancelButton.addEventListener('click', function() {
+        if (gameEngine && gameEngine.playGame) {
+            gameEngine.playGame();
+        }
+    });
 
-        cancelButton.addEventListener('click', function() {
-            resumeGame();
-        });
+})();
+</script>
 
-    })();
-    </script>
-
-    <script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
+<script type="text/javascript" src="js/gse/gse-export.js" async onload="onEngineLoad()"></script>
 </body>
 </html>
