@@ -9,12 +9,16 @@ function onEngineLoad() {
             },
             onGameCenterPostScore: function(score, leaderboard) {
                 window.currentScore = score;
-                if (window.telegramUser) updateFirebaseScore(window.telegramUser.id, window.telegramUser.displayName, score);
+                if (window.playerId) updateFirebaseScore(window.playerId, window.playerName, score);
             },
             onGameCenterShowLeaderboard: function(leaderboard) {
-                updateLeaderboard().then(() => {
-                    showEndgameOverlay();
-                });
+                if (window.playerId) {
+                    updateLeaderboard().then(() => {
+                        showLeaderboardOverlay();
+                    });
+                } else {
+                    showUsernameOverlay();
+                }
             },
             onLoadingBegin: function() {
                 engine.showOverlay();
@@ -25,19 +29,15 @@ function onEngineLoad() {
                 engine.hideOverlay();
             },
             onGameReady: function(width, height) {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    window.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
-                    if (window.telegramUser) {
-                        let displayName = getTelegramDisplayName(window.telegramUser);
-                        window.telegramUser.displayName = displayName;
-                        document.getElementById('telegram-username').textContent = displayName;
-                        engine.postEvent('externalWriteGameAttribute', null, "game.attributes.telegramUser", {
-                            id: window.telegramUser.id,
-                            name: displayName
-                        });
-                    }
+                // Check if the player has a stored ID and name
+                const storedPlayerId = localStorage.getItem('playerId');
+                const storedPlayerName = localStorage.getItem('playerName');
+                if (storedPlayerId && storedPlayerName) {
+                    window.playerId = storedPlayerId;
+                    window.playerName = storedPlayerName;
                 }
-                showStartOverlay();
+                // Start the game immediately without showing any overlay
+                resumeGame();
             },
             onWindowResize: function() {
                 engine.relayout();
@@ -56,14 +56,14 @@ function onEngineLoad() {
 }
 
 // Leaderboard functionality
-function updateFirebaseScore(userId, userName, score) {
-    const userRef = firebase.database().ref('users/' + userId);
+function updateFirebaseScore(playerId, playerName, score) {
+    const userRef = firebase.database().ref('users/' + playerId);
     userRef.once('value').then((snapshot) => {
         const userData = snapshot.val();
         if (!userData || userData.score < score) {
             userRef.set({
-                id: userId,
-                name: userName,
+                id: playerId,
+                name: playerName,
                 score: score
             });
         }
@@ -74,7 +74,7 @@ function updateFirebaseScore(userId, userName, score) {
 function updateLeaderboard() {
     return new Promise((resolve, reject) => {
         const leaderboardRef = firebase.database().ref('users');
-        leaderboardRef.orderByChild('score').once('value', (snapshot) => {
+        leaderboardRef.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
             const leaderboardData = [];
             snapshot.forEach((childSnapshot) => {
                 leaderboardData.unshift({
@@ -82,7 +82,7 @@ function updateLeaderboard() {
                     ...childSnapshot.val()
                 });
             });
-            updateLeaderboardWithCurrentPlayer(leaderboardData);
+            updateLeaderboardDisplay(leaderboardData);
             resolve();
         }, (error) => {
             console.error("Error fetching leaderboard data:", error);
@@ -91,20 +91,20 @@ function updateLeaderboard() {
     });
 }
 
-function updateLeaderboardWithCurrentPlayer(leaderboardData) {
-    let leaderboardHtml = '<tr><th>Rank</th><th>Ant Name</th><th>Top Kills</th></tr>';
+function updateLeaderboardDisplay(leaderboardData) {
+    let leaderboardHtml = '<tr><th>Rank</th><th>Player Name</th><th>Top Score</th></tr>';
     let currentPlayerHighScore = 0;
     leaderboardData.forEach((user, index) => {
         const rank = index + 1;
         const initials = user.name.charAt(0).toUpperCase();
         const avatarHtml = `<div class="avatar">${initials}</div>`;
-        const isCurrentPlayer = user.id === window.telegramUser.id;
+        const isCurrentPlayer = user.id === window.playerId;
         const currentPlayerIcon = isCurrentPlayer ? '<span class="current-player-icon"></span>' : '';
         if (isCurrentPlayer) currentPlayerHighScore = user.score;
         leaderboardHtml += `<tr><td>${rank}</td><td>${avatarHtml}${user.name}${currentPlayerIcon}</td><td>${user.score}</td></tr>`;
     });
     document.getElementById('leaderboard').innerHTML = leaderboardHtml;
-    document.getElementById('total-ants').textContent = `Total Ants: ${leaderboardData.length}`;
+    document.getElementById('total-players').textContent = `Total Players: ${leaderboardData.length}`;
     document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
     if (window.currentScore > currentPlayerHighScore) {
         document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
@@ -112,6 +112,34 @@ function updateLeaderboardWithCurrentPlayer(leaderboardData) {
     } else {
         document.getElementById('new-high-score').style.display = 'none';
     }
+}
+
+function showUsernameOverlay() {
+    pauseGame();
+    document.getElementById('username-overlay').style.display = 'flex';
+}
+
+function hideUsernameOverlay() {
+    document.getElementById('username-overlay').style.display = 'none';
+    resumeGame();
+}
+
+function showLeaderboardOverlay() {
+    pauseGame();
+    document.getElementById('leaderboard-overlay').style.display = 'flex';
+}
+
+function hideLeaderboardOverlay() {
+    document.getElementById('leaderboard-overlay').style.display = 'none';
+    resumeGame();
+}
+
+function pauseGame() {
+    if (window.engine) window.engine.pause();
+}
+
+function resumeGame() {
+    if (window.engine) window.engine.play();
 }
 
 // Countdown timer
@@ -138,3 +166,6 @@ function startCountdownTimer() {
     updateCountdown();
     setInterval(updateCountdown, 1000);
 }
+
+// Initialize countdown timer
+startCountdownTimer();
