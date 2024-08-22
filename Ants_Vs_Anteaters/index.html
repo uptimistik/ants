@@ -20,7 +20,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.8);
             z-index: 10000;
         }
         .overlay-content {
@@ -61,9 +61,23 @@
 
 <div id="leaderboard-overlay" class="overlay">
     <div class="overlay-content">
-        <h2>Leaderboard</h2>
-        <div id="leaderboard-content"></div>
-        <button id="close-leaderboard-button">Close</button>
+        <h2>Ant Leaderboard</h2>
+        <p id="total-ants">Total Ants: <span>0</span></p>
+        <p id="last-score">Your Last Score: <span>undefined</span></p>
+        <p id="leaderboard-status" class="yellow-text">Leaderboard reset is in progress!</p>
+        <table id="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Ant Name</th>
+                    <th>Top Kills</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Leaderboard entries will be dynamically inserted here -->
+            </tbody>
+        </table>
+        <button id="leaderboard-close-btn">Back</button>
     </div>
 </div>
 
@@ -74,6 +88,7 @@
 <script type="text/javascript">
 (function(global) {
     var currentScore = 0;
+    var lastScore = 0;
     var engine = null;
 
     global.onEngineLoad = function() {
@@ -119,17 +134,17 @@
     };
 
     function setupEventListeners() {
-        document.getElementById('close-leaderboard-button').addEventListener('click', function() {
+        document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
             hideLeaderboardOverlay();
             resumeGame();
         });
     }
 
     function updateFirebaseScore(score) {
-        const userId = localStorage.getItem('antUserId');
-        const username = localStorage.getItem('antUsername');
+        var userId = localStorage.getItem('antUserId');
+        var username = localStorage.getItem('antUsername');
         if (userId && username) {
-            firebase.database().ref('leaderboard/' + userId).set({
+            firebase.database().ref('leaderboards/main/' + userId).set({
                 username: username,
                 score: score
             });
@@ -137,19 +152,42 @@
     }
 
     function updateLeaderboard() {
-        return firebase.database().ref('leaderboard').orderByChild('score').limitToLast(10).once('value')
-            .then((snapshot) => {
-                let leaderboardHTML = '<ol>';
-                const leaderboardData = [];
-                snapshot.forEach((childSnapshot) => {
+        return firebase.database().ref('leaderboards/main').orderByChild('score').limitToLast(10).once('value')
+            .then(function(snapshot) {
+                var leaderboardData = [];
+                snapshot.forEach(function(childSnapshot) {
                     leaderboardData.unshift(childSnapshot.val());
                 });
-                leaderboardData.forEach((entry) => {
-                    leaderboardHTML += `<li>${entry.username}: ${entry.score}</li>`;
-                });
-                leaderboardHTML += '</ol>';
-                document.getElementById('leaderboard-content').innerHTML = leaderboardHTML;
+                populateLeaderboard(leaderboardData);
+                document.getElementById('leaderboard-overlay').style.display = 'flex';
+                document.getElementById('total-ants').querySelector('span').textContent = leaderboardData.length;
+                document.getElementById('last-score').querySelector('span').textContent = currentScore;
+            })
+            .catch(function(error) {
+                console.error("Error fetching leaderboard data:", error);
             });
+    }
+
+    function populateLeaderboard(data) {
+        var leaderboardBody = document.querySelector('#leaderboard-table tbody');
+        leaderboardBody.innerHTML = '';
+        var currentUser = localStorage.getItem('antUsername');
+        data.forEach(function(entry, index) {
+            var row = leaderboardBody.insertRow();
+            row.insertCell(0).textContent = index + 1;
+            var nameCell = row.insertCell(1);
+            var antIcon = document.createElement('span');
+            antIcon.className = 'ant-icon';
+            antIcon.textContent = entry.username[0].toUpperCase();
+            nameCell.appendChild(antIcon);
+            nameCell.appendChild(document.createTextNode(entry.username));
+            if (entry.username === currentUser) {
+                var yellowDot = document.createElement('span');
+                yellowDot.className = 'yellow-dot';
+                nameCell.appendChild(yellowDot);
+            }
+            row.insertCell(2).textContent = entry.score;
+        });
     }
 
     function pauseGame() {
