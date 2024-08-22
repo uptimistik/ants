@@ -125,6 +125,10 @@ body {
                 },
                 onGameCenterShowLeaderboard: function(identifier) {
                     console.log("Show Leaderboard requested with identifier:", identifier);
+
+                    // Pause the game when the leaderboard is requested
+                    pauseGame();
+
                     if (isPlayerRegistered()) {
                         displayLeaderboard(identifier);
                     } else {
@@ -138,6 +142,7 @@ body {
 
             document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
                 document.getElementById('leaderboard-overlay').style.display = 'none';
+                resumeGame();
             });
 
             document.getElementById('username-submit-btn').addEventListener('click', function() {
@@ -157,6 +162,18 @@ body {
         });
     };
 
+    function pauseGame() {
+        if (gameEngine && gameEngine.pauseGame) {
+            gameEngine.pauseGame();
+        }
+    }
+
+    function resumeGame() {
+        if (gameEngine && gameEngine.playGame) {
+            gameEngine.playGame();
+        }
+    }
+
     function isPlayerRegistered() {
         return localStorage.getItem('antUsername') !== null;
     }
@@ -173,6 +190,7 @@ body {
             })
             .catch(function(error) {
                 console.error("Error fetching leaderboard data:", error);
+                resumeGame(); // Resume game on error
             });
     }
 
@@ -197,9 +215,7 @@ body {
         }, 100);
 
         // Disable game input handlers to prevent interference
-        if (gameEngine && gameEngine.pauseGame) {
-            gameEngine.pauseGame();
-        }
+        pauseGame();
     }
 
     function createUsername(username) {
@@ -218,9 +234,7 @@ body {
         }).catch(function(error) {
             console.error("Error creating user:", error);
         }).finally(function() {
-            if (gameEngine && gameEngine.playGame) {
-                gameEngine.playGame();
-            }
+            resumeGame();
         });
     }
 
@@ -230,21 +244,15 @@ body {
     const cancelButton = document.getElementById('gse-text-cancel');
 
     textInput.addEventListener('focus', function() {
-        if (gameEngine && gameEngine.pauseGame) {
-            gameEngine.pauseGame();
-        }
+        pauseGame();
     });
 
     doneButton.addEventListener('click', function() {
-        if (gameEngine && gameEngine.playGame) {
-            gameEngine.playGame();
-        }
+        resumeGame();
     });
 
     cancelButton.addEventListener('click', function() {
-        if (gameEngine && gameEngine.playGame) {
-            gameEngine.playGame();
-        }
+        resumeGame();
     });
 
 })();
