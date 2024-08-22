@@ -105,7 +105,7 @@ function updateLeaderboardDisplay(leaderboardData) {
     });
     document.getElementById('leaderboard').innerHTML = leaderboardHtml;
     document.getElementById('total-players').textContent = `Total Players: ${leaderboardData.length}`;
-    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore}`;
+    document.getElementById('your-last-score').textContent = `Your Last Score: ${window.lastScore || 0}`;
     if (window.currentScore > currentPlayerHighScore) {
         document.getElementById('new-high-score').textContent = `New High Score: ${window.currentScore}`;
         document.getElementById('new-high-score').style.display = 'block';
@@ -114,6 +114,7 @@ function updateLeaderboardDisplay(leaderboardData) {
     }
 }
 
+// UI management functions
 function showUsernameOverlay() {
     pauseGame();
     document.getElementById('username-overlay').style.display = 'flex';
@@ -134,6 +135,7 @@ function hideLeaderboardOverlay() {
     resumeGame();
 }
 
+// Game state management
 function pauseGame() {
     if (window.engine) window.engine.pause();
 }
@@ -169,3 +171,25 @@ function startCountdownTimer() {
 
 // Initialize countdown timer
 startCountdownTimer();
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('save-username-button').addEventListener('click', function() {
+        const usernameInput = document.getElementById('username-input');
+        const username = usernameInput.value.trim();
+        if (username) {
+            window.playerId = 'player-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
+            window.playerName = username;
+            localStorage.setItem('playerId', window.playerId);
+            localStorage.setItem('playerName', username);
+            updateFirebaseScore(window.playerId, username, 0);
+            hideUsernameOverlay();
+            showLeaderboardOverlay();
+        }
+    });
+
+    document.getElementById('close-leaderboard-button').addEventListener('click', hideLeaderboardOverlay);
+});
+
+// Load the game engine
+onEngineLoad();
