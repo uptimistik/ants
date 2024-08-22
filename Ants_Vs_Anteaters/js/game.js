@@ -1,56 +1,8 @@
-// Game engine logic
+// Game initialization
 function initializeGame() {
-    if (typeof gse === 'undefined') {
-        console.error('GSE library not loaded');
-        return;
-    }
-
-    gse.ready(function(gseEngine) {
-        window.engine = gseEngine;
-        var loadingElement = document.getElementById('gse-loading');
-        var playerDelegate = {
-            onTouchPressed: function() {
-                if (navigator.vibrate) navigator.vibrate(50);
-            },
-            onGameCenterPostScore: function(score, leaderboard) {
-                window.currentScore = score;
-                if (window.playerId) updateFirebaseScore(window.playerId, window.playerName, score);
-            },
-            onGameCenterShowLeaderboard: function(leaderboard) {
-                if (window.playerId) {
-                    updateLeaderboard().then(() => {
-                        showLeaderboardOverlay();
-                    });
-                } else {
-                    showUsernameOverlay();
-                }
-            },
-            onLoadingBegin: function() {
-                engine.showOverlay();
-                if (loadingElement) loadingElement.style.visibility = 'visible';
-            },
-            onLoadingEnd: function() {
-                if (loadingElement) loadingElement.style.visibility = 'hidden';
-                engine.hideOverlay();
-            },
-            onGameReady: function(width, height) {
-                loadPlayerData();
-                resumeGame();
-            },
-            onWindowResize: function() {
-                engine.relayout();
-            }
-        };
-
-        engine.appendDelegate(playerDelegate);
-        window.addEventListener('resize', playerDelegate.onWindowResize, false);
-        engine.setRenderFrame('gse-player');
-        engine.setOptions({
-            'viewport-reference': 'window',
-            'viewport-fit': 'letterbox'
-        });
-        engine.loadOptionsFromURL();
-    });
+    console.log("Game initialized");
+    // Add any game initialization logic here
+    loadPlayerData();
 }
 
 function loadPlayerData() {
@@ -144,7 +96,6 @@ function updateLeaderboardDisplay(leaderboardData) {
 
 // UI management functions
 function showUsernameOverlay() {
-    pauseGame();
     const usernameOverlay = document.getElementById('username-overlay');
     if (usernameOverlay) usernameOverlay.style.display = 'flex';
 }
@@ -152,11 +103,9 @@ function showUsernameOverlay() {
 function hideUsernameOverlay() {
     const usernameOverlay = document.getElementById('username-overlay');
     if (usernameOverlay) usernameOverlay.style.display = 'none';
-    resumeGame();
 }
 
 function showLeaderboardOverlay() {
-    pauseGame();
     const leaderboardOverlay = document.getElementById('leaderboard-overlay');
     if (leaderboardOverlay) leaderboardOverlay.style.display = 'flex';
 }
@@ -164,16 +113,6 @@ function showLeaderboardOverlay() {
 function hideLeaderboardOverlay() {
     const leaderboardOverlay = document.getElementById('leaderboard-overlay');
     if (leaderboardOverlay) leaderboardOverlay.style.display = 'none';
-    resumeGame();
-}
-
-// Game state management
-function pauseGame() {
-    if (window.engine) window.engine.pause();
-}
-
-function resumeGame() {
-    if (window.engine) window.engine.play();
 }
 
 // Countdown timer
