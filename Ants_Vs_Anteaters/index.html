@@ -187,7 +187,7 @@
                             engine.hideOverlay();
                         },
                         onWindowResize: function() {
-                            engine.relayout();
+                            handleResize();
                         },
                         onGameCenterShowLeaderboard: function(identifier) {
                             displayLeaderboard(identifier);
@@ -202,11 +202,14 @@
 
                     engine.setRenderFrame('gse-player');
                     engine.setOptions({
-                        'viewport-reference': 'game',
+                        'viewport-reference': 'window',
                         'viewport-fit': 'letterbox'
                     });
                     engine.loadOptionsFromURL();
                     engine.play();
+
+                    // Initial resize handling
+                    handleResize();
                 });
             };
 
@@ -218,95 +221,120 @@
             document.body.appendChild(script);
         }
 
-        function displayLeaderboard(identifier) {
-    firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
-        .then(function(snapshot) {
-            let leaderboardData = [];
-            snapshot.forEach(function(childSnapshot) {
-                leaderboardData.push({
-                    username: childSnapshot.val().username,
-                    score: childSnapshot.val().score
-                });
-            });
+        function handleResize() {
+            const pixelRatio = window.devicePixelRatio || 1;
+            const width = window.innerWidth * pixelRatio;
+            const height = window.innerHeight * pixelRatio;
             
-            // Sort the leaderboard data in descending order of score
-            leaderboardData.sort((a, b) => b.score - a.score);
+            // Adjust your game's canvas or rendering surface size here
+            // If GameSalad provides a way to adjust the canvas size, you should use that method
+            // For example:
+            // gameEngine.setCanvasSize(width, height);
+            
+            // If GameSalad doesn't provide a direct method, you might need to scale the game container
+            const gameContainer = document.getElementById('gse-player');
+            if (gameContainer) {
+                gameContainer.style.width = `${window.innerWidth}px`;
+                gameContainer.style.height = `${window.innerHeight}px`;
+                gameContainer.style.transform = `scale(${1 / pixelRatio})`;
+                gameContainer.style.transformOrigin = 'top left';
+            }
+            
+            if (gameEngine && gameEngine.relayout) {
+                gameEngine.relayout();
+            }
+        }
 
-            const username = localStorage.getItem('antUsername');
-            const userScore = leaderboardData.find(entry => entry.username === username)?.score || 'N/A';
-            
-            populateLeaderboard(leaderboardData, username, userScore);
-            document.getElementById('leaderboard-overlay').style.display = 'flex';
-            document.getElementById('total-ants').querySelector('span').textContent = leaderboardData.length;
-            document.getElementById('last-score').querySelector('span').textContent = userScore;
-        }).catch(function(error) {
-            console.error("Error fetching data:", error);
-        });
-}
+        function displayLeaderboard(identifier) {
+            firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
+                .then(function(snapshot) {
+                    let leaderboardData = [];
+                    snapshot.forEach(function(childSnapshot) {
+                        leaderboardData.push({
+                            username: childSnapshot.val().username,
+                            score: childSnapshot.val().score
+                        });
+                    });
+                    
+                    // Sort the leaderboard data in descending order of score
+                    leaderboardData.sort((a, b) => b.score - a.score);
+
+                    const username = localStorage.getItem('antUsername');
+                    const userScore = leaderboardData.find(entry => entry.username === username)?.score || 'N/A';
+                    
+                    populateLeaderboard(leaderboardData, username, userScore);
+                    document.getElementById('leaderboard-overlay').style.display = 'flex';
+                    document.getElementById('total-ants').querySelector('span').textContent = leaderboardData.length;
+                    document.getElementById('last-score').querySelector('span').textContent = userScore;
+                }).catch(function(error) {
+                    console.error("Error fetching data:", error);
+                });
+        }
 
         function populateLeaderboard(data, currentUsername, userScore) {
-    const leaderboardBody = document.querySelector('#leaderboard-table tbody');
-    leaderboardBody.innerHTML = '';
-    
-    if (data.length === 0) {
-        const row = leaderboardBody.insertRow();
-        const cell = row.insertCell(0);
-        cell.colSpan = 3;
-        cell.textContent = "No data available yet";
-    } else {
-        data.forEach(function(entry, index) {
-            const row = leaderboardBody.insertRow();
-            row.insertCell(0).textContent = index + 1;
-            const nameCell = row.insertCell(1);
-            const antIcon = document.createElement('span');
-            antIcon.className = 'ant-icon';
-            antIcon.textContent = entry.username[0].toUpperCase();
-            nameCell.appendChild(antIcon);
-            nameCell.appendChild(document.createTextNode(entry.username));
-            if (entry.username === currentUsername) {
+            const leaderboardBody = document.querySelector('#leaderboard-table tbody');
+            leaderboardBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                const row = leaderboardBody.insertRow();
+                const cell = row.insertCell(0);
+                cell.colSpan = 3;
+                cell.textContent = "No data available yet";
+            } else {
+                data.forEach(function(entry, index) {
+                    const row = leaderboardBody.insertRow();
+                    row.insertCell(0).textContent = index + 1;
+                    const nameCell = row.insertCell(1);
+                    const antIcon = document.createElement('span');
+                    antIcon.className = 'ant-icon';
+                    antIcon.textContent = entry.username[0].toUpperCase();
+                    nameCell.appendChild(antIcon);
+                    nameCell.appendChild(document.createTextNode(entry.username));
+                    if (entry.username === currentUsername) {
+                        const yellowDot = document.createElement('span');
+                        yellowDot.className = 'yellow-dot';
+                        nameCell.appendChild(yellowDot);
+                    }
+                    row.insertCell(2).textContent = entry.score;
+                });
+            }
+
+            // Add current user if not in top 10
+            if (!data.some(entry => entry.username === currentUsername)) {
+                const row = leaderboardBody.insertRow();
+                row.insertCell(0).textContent = '-';
+                const nameCell = row.insertCell(1);
+                const antIcon = document.createElement('span');
+                antIcon.className = 'ant-icon';
+                antIcon.textContent = currentUsername[0].toUpperCase();
+                nameCell.appendChild(antIcon);
+                nameCell.appendChild(document.createTextNode(currentUsername));
                 const yellowDot = document.createElement('span');
                 yellowDot.className = 'yellow-dot';
                 nameCell.appendChild(yellowDot);
+                row.insertCell(2).textContent = userScore;
             }
-            row.insertCell(2).textContent = entry.score;
-        });
-    }
-
-    // Add current user if not in top 10
-    if (!data.some(entry => entry.username === currentUsername)) {
-        const row = leaderboardBody.insertRow();
-        row.insertCell(0).textContent = '-';
-        const nameCell = row.insertCell(1);
-        const antIcon = document.createElement('span');
-        antIcon.className = 'ant-icon';
-        antIcon.textContent = currentUsername[0].toUpperCase();
-        nameCell.appendChild(antIcon);
-        nameCell.appendChild(document.createTextNode(currentUsername));
-        const yellowDot = document.createElement('span');
-        yellowDot.className = 'yellow-dot';
-        nameCell.appendChild(yellowDot);
-        row.insertCell(2).textContent = userScore;
-    }
-}
+        }
 
         function updateUserScore(score, identifier) {
-    const userId = localStorage.getItem('antUserId');
-    const username = localStorage.getItem('antUsername');
-    if (userId && username) {
-        const updates = {};
-        updates['/users/' + userId + '/lastScore'] = score;
-        updates['/leaderboards/' + identifier + '/' + userId] = {
-            username: username,
-            score: score
-        };
-        firebase.database().ref().update(updates).then(() => {
-            console.log("Score updated successfully");
-            displayLeaderboard(identifier);
-        }).catch((error) => {
-            console.error("Error updating score:", error);
-        });
-    }
-}
+            const userId = localStorage.getItem('antUserId');
+            const username = localStorage.getItem('antUsername');
+            if (userId && username) {
+                const updates = {};
+                updates['/users/' + userId + '/lastScore'] = score;
+                updates['/leaderboards/' + identifier + '/' + userId] = {
+                    username: username,
+                    score: score
+                };
+                firebase.database().ref().update(updates).then(() => {
+                    console.log("Score updated successfully");
+                    displayLeaderboard(identifier);
+                }).catch((error) => {
+                    console.error("Error updating score:", error);
+                });
+            }
+        }
+
         // Event Listeners
         document.getElementById('username-submit-btn').addEventListener('click', function() {
             var username = document.getElementById('username-input').value.trim();
