@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Colony Clash $ANT</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         html, body {
             margin: 0;
@@ -13,6 +15,8 @@
             height: 100%;
             overflow: hidden;
             background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
         }
         #game-container {
             position: absolute;
@@ -46,6 +50,9 @@
             border-radius: 10px;
             text-align: center;
             color: #fff;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
         }
         #username-input {
             margin: 10px 0;
@@ -60,6 +67,23 @@
             margin-top: 10px;
             cursor: pointer;
             border-radius: 5px;
+        }
+        #leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #leaderboard-table th, #leaderboard-table td {
+            border: 1px solid #4CAF50;
+            padding: 8px;
+            text-align: left;
+        }
+        #leaderboard-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .yellow-text {
+            color: yellow;
         }
     </style>
 </head>
@@ -76,10 +100,38 @@
         </div>
     </div>
 
+    <div id="leaderboard-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Colony Clash Leaderboard</h2>
+            <p id="total-ants">Total Ants: <span>0</span></p>
+            <p id="last-score">Your Last Score: <span>0</span></p>
+            <p id="leaderboard-status" class="yellow-text">Leaderboard reset on Sunday 12pm EST!</p>
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Ant Name</th>
+                        <th>Top Kills</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Leaderboard entries will be dynamically inserted here -->
+                </tbody>
+            </table>
+            <button id="leaderboard-close-btn">Back</button>
+        </div>
+    </div>
+
     <script>
     (function() {
         let gameEngine;
         const isTelegramWebapp = window.Telegram && window.Telegram.WebApp;
+
+        // Initialize Firebase (replace with your actual Firebase config)
+        const firebaseConfig = {
+            // Your Firebase configuration object
+        };
+        firebase.initializeApp(firebaseConfig);
 
         function initApp() {
             if (isTelegramWebapp) {
@@ -154,16 +206,84 @@
         }
 
         function displayLeaderboard(identifier) {
-            // Implement leaderboard display logic here
-            console.log('Displaying leaderboard:', identifier);
+            firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
+                .then(function(snapshot) {
+                    let leaderboardData = [];
+                    snapshot.forEach(function(childSnapshot) {
+                        leaderboardData.push({
+                            username: childSnapshot.val().username,
+                            score: childSnapshot.val().score
+                        });
+                    });
+                    
+                    leaderboardData.sort((a, b) => b.score - a.score);
+
+                    const username = localStorage.getItem('antUsername');
+                    const userScore = leaderboardData.find(entry => entry.username === username)?.score || '0';
+                    
+                    populateLeaderboard(leaderboardData, username, userScore);
+                    document.getElementById('leaderboard-overlay').style.display = 'flex';
+                    document.getElementById('total-ants').querySelector('span').textContent = leaderboardData.length;
+                    document.getElementById('last-score').querySelector('span').textContent = userScore;
+                }).catch(function(error) {
+                    console.error("Error fetching leaderboard data:", error);
+                });
+        }
+
+        function populateLeaderboard(data, currentUsername, userScore) {
+            const leaderboardBody = document.querySelector('#leaderboard-table tbody');
+            leaderboardBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                const row = leaderboardBody.insertRow();
+                const cell = row.insertCell(0);
+                cell.colSpan = 3;
+                cell.textContent = "No data available yet";
+            } else {
+                data.forEach(function(entry, index) {
+                    const row = leaderboardBody.insertRow();
+                    row.insertCell(0).textContent = index + 1;
+                    row.insertCell(1).textContent = entry.username;
+                    row.insertCell(2).textContent = entry.score;
+                    if (entry.username === currentUsername) {
+                        row.classList.add('yellow-text');
+                    }
+                });
+            }
+
+            if (!data.some(entry => entry.username === currentUsername)) {
+                const row = leaderboardBody.insertRow();
+                row.classList.add('yellow-text');
+                row.insertCell(0).textContent = '-';
+                row.insertCell(1).textContent = currentUsername;
+                row.insertCell(2).textContent = userScore;
+            }
         }
 
         function updateUserScore(score, identifier) {
-            // Implement score update logic here
-            console.log('Updating score:', score, 'for', identifier);
+            const username = localStorage.getItem('antUsername');
+            if (username) {
+                const updates = {};
+                updates['/leaderboards/' + identifier + '/' + username] = {
+                    username: username,
+                    score: score
+                };
+                firebase.database().ref().update(updates).then(() => {
+                    console.log("Score updated successfully");
+                    displayLeaderboard(identifier);
+                }).catch((error) => {
+                    console.error("Error updating score:", error);
+                });
+            }
         }
 
         document.getElementById('username-submit-btn').addEventListener('click', createUsername);
+        document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
+            document.getElementById('leaderboard-overlay').style.display = 'none';
+            if (gameEngine && gameEngine.play) {
+                gameEngine.play();
+            }
+        });
 
         // Start the application
         initApp();
