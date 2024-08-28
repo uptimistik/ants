@@ -96,3 +96,10 @@ h2 {
     border-radius: 50%;
     margin-left: 5px;
 }
+
+#gse-player {
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
