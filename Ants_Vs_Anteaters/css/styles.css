@@ -103,3 +103,55 @@ h2 {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
+/* Base styles for overlay (adjust as needed based on your existing styles) */
+.overlay-content {
+    width: 80%;
+    max-width: 600px;
+    padding: 20px;
+    font-size: 16px; /* Base font size */
+}
+
+/* Media query for mobile devices */
+@media screen and (max-width: 767px) {
+    .overlay-content {
+        width: 90%; /* Slightly wider on mobile */
+        padding: 15px;
+        font-size: 18px; /* Slightly larger base font size for mobile */
+    }
+
+    .overlay-content h2 {
+        font-size: 24px; /* Larger heading size */
+    }
+
+    #leaderboard-table {
+        font-size: 14px; /* Adjust table font size */
+    }
+
+    #leaderboard-table th,
+    #leaderboard-table td {
+        padding: 8px 5px; /* Adjust cell padding */
+    }
+
+    #leaderboard-close-btn {
+        font-size: 18px;
+        padding: 12px 24px; /* Larger touch target */
+    }
+
+    /* Adjust other specific elements as needed */
+}
+
+/* Optional: Styles for even smaller screens */
+@media screen and (max-width: 480px) {
+    .overlay-content {
+        width: 95%;
+        padding: 10px;
+    }
+
+    .overlay-content h2 {
+        font-size: 22px;
+    }
+
+    #leaderboard-table {
+        font-size: 12px;
+    }
+}
