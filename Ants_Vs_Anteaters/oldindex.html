@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colony Clash $ANT</title>
+    <link rel="stylesheet" type="text/css" href="css/gse-style.css" />
+    <link rel="stylesheet" type="text/css" href="css/gse-style-loading.css" />
+    <link rel="stylesheet" type="text/css" href="css/styles.css" />
+    <style>
+        body {
+            background-color: black;
+            margin: 0;
+            padding: 0;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+        }
+        .overlay-content {
+            background-color: black;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #leaderboard-table th,
+        #leaderboard-table td {
+            padding: 10px;
+            border: 1px solid #4CAF50;
+        }
+        #leaderboard-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .yellow-text {
+            color: yellow;
+        }
+        #leaderboard-close-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .ant-icon {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+        }
+        .yellow-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: yellow;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gse-player" class="gse-frame">
+        <div class="gse-overlay">
+            <div id="gse-text" class="gse-dialog">
+                <div>
+                    <button id="gse-text-cancel">Cancel</button>
+                    <button id="gse-text-done">Done</button>
+                    <p id="gse-text-prompt"></p>
+                </div>
+                <div>
+                    <textarea id="gse-text-input"></textarea>
+                </div>
+            </div>
+            <div id="gse-browser" class="gse-dialog">            
+                <iframe id="gse-browser-frame"></iframe>
+                <button id="gse-browser-close" href="#">&#10006;</button>
+            </div>
+            <div id="gse-loading" style="visibility: visible;">
+                <img src="images/gse-loading.png" alt="Loading..." />
+            </div>
+        </div>
+    </div>
+
+    <div id="username-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Create Your Ant Name</h2>
+            <input type="text" id="username-input" placeholder="Enter your ant name">
+            <button id="username-submit-btn">Submit</button>
+        </div>
+    </div>
+
+    <div id="leaderboard-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Colony Clash Leaderboard</h2>
+            <p id="total-ants">Total Ants: <span>0</span></p>
+            <p id="last-score">Your Last Score: <span>undefined</span></p>
+            <p id="leaderboard-status" class="yellow-text">Leaderboard reset on Sunday 12pm EST!</p>
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Ant Name</th>
+                        <th>Top Kills</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Leaderboard entries will be dynamically inserted here -->
+                </tbody>
+            </table>
+            <button id="leaderboard-close-btn">Back</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="js/app.js"></script>
+
+    <script type="text/javascript">
+    (function() {
+        let gameEngine;
+
+        function checkExistingAccount() {
+            if (localStorage.getItem('antUsername')) {
+                loadGame();
+            } else {
+                showUsernameOverlay();
+            }
+        }
+
+        function showUsernameOverlay() {
+            document.getElementById('username-overlay').style.display = 'flex';
+            document.getElementById('username-input').focus();
+        }
+
+        function createUsername(username) {
+            const userRef = firebase.database().ref('users').push();
+            userRef.set({
+                username: username,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                lastScore: 0
+            }).then(function() {
+                localStorage.setItem('antUsername', username);
+                localStorage.setItem('antUserId', userRef.key);
+                document.getElementById('username-overlay').style.display = 'none';
+                loadGame();
+            }).catch(function(error) {
+                console.error("Error creating user:", error);
+                alert("Error creating user. Please try again.");
+            });
+        }
+
+        function loadGame() {
+            window.onEngineLoad = function() {
+                gse.ready(function(engine) {
+                    gameEngine = engine;
+                    var loadingElement = document.getElementById('gse-loading');
+                    var playerDelegate = {
+                        onLoadingBegin: function() {
+                            engine.showOverlay();
+                            loadingElement.style.visibility = 'visible';
+                        },
+                        onLoadingEnd: function() {
+                            loadingElement.style.visibility = 'hidden';
+                            engine.hideOverlay();
+                        },
+                        onWindowResize: function() {
+                            engine.relayout();
+                        },
+                        onGameCenterShowLeaderboard: function(identifier) {
+                            displayLeaderboard(identifier);
+                        },
+                        onGameCenterPostScore: function(score, identifier) {
+                            updateUserScore(score, identifier);
+                        }
+                    };
+
+                    engine.appendDelegate(playerDelegate);
+                    window.addEventListener('resize', playerDelegate.onWindowResize, false);
+
+                    engine.setRenderFrame('gse-player');
+                    engine.setOptions({
+                        'viewport-reference': 'window',
+                        'viewport-fit': 'letterbox'
+                    });
+                    engine.loadOptionsFromURL();
+                    engine.play();
+                });
+            };
+
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'js/gse/gse-export.js';
+            script.async = true;
+            script.onload = window.onEngineLoad;
+            document.body.appendChild(script);
+        }
+
+        function displayLeaderboard(identifier) {
+    firebase.database().ref('leaderboards/' + identifier).orderByChild('score').limitToLast(10).once('value')
+        .then(function(snapshot) {
+            let leaderboardData = [];
+            snapshot.forEach(function(childSnapshot) {
+                leaderboardData.push({
+                    username: childSnapshot.val().username,
+                    score: childSnapshot.val().score
+                });
+            });
+            
+            // Sort the leaderboard data in descending order of score
+            leaderboardData.sort((a, b) => b.score - a.score);
+
+            const username = localStorage.getItem('antUsername');
+            const userScore = leaderboardData.find(entry => entry.username === username)?.score || 'N/A';
+            
+            populateLeaderboard(leaderboardData, username, userScore);
+            document.getElementById('leaderboard-overlay').style.display = 'flex';
+            document.getElementById('total-ants').querySelector('span').textContent = leaderboardData.length;
+            document.getElementById('last-score').querySelector('span').textContent = userScore;
+        }).catch(function(error) {
+            console.error("Error fetching data:", error);
+        });
+}
+
+        function populateLeaderboard(data, currentUsername, userScore) {
+    const leaderboardBody = document.querySelector('#leaderboard-table tbody');
+    leaderboardBody.innerHTML = '';
+    
+    if (data.length === 0) {
+        const row = leaderboardBody.insertRow();
+        const cell = row.insertCell(0);
+        cell.colSpan = 3;
+        cell.textContent = "No data available yet";
+    } else {
+        data.forEach(function(entry, index) {
+            const row = leaderboardBody.insertRow();
+            row.insertCell(0).textContent = index + 1;
+            const nameCell = row.insertCell(1);
+            const antIcon = document.createElement('span');
+            antIcon.className = 'ant-icon';
+            antIcon.textContent = entry.username[0].toUpperCase();
+            nameCell.appendChild(antIcon);
+            nameCell.appendChild(document.createTextNode(entry.username));
+            if (entry.username === currentUsername) {
+                const yellowDot = document.createElement('span');
+                yellowDot.className = 'yellow-dot';
+                nameCell.appendChild(yellowDot);
+            }
+            row.insertCell(2).textContent = entry.score;
+        });
+    }
+
+    // Add current user if not in top 10
+    if (!data.some(entry => entry.username === currentUsername)) {
+        const row = leaderboardBody.insertRow();
+        row.insertCell(0).textContent = '-';
+        const nameCell = row.insertCell(1);
+        const antIcon = document.createElement('span');
+        antIcon.className = 'ant-icon';
+        antIcon.textContent = currentUsername[0].toUpperCase();
+        nameCell.appendChild(antIcon);
+        nameCell.appendChild(document.createTextNode(currentUsername));
+        const yellowDot = document.createElement('span');
+        yellowDot.className = 'yellow-dot';
+        nameCell.appendChild(yellowDot);
+        row.insertCell(2).textContent = userScore;
+    }
+}
+
+        function updateUserScore(score, identifier) {
+    const userId = localStorage.getItem('antUserId');
+    const username = localStorage.getItem('antUsername');
+    if (userId && username) {
+        const updates = {};
+        updates['/users/' + userId + '/lastScore'] = score;
+        updates['/leaderboards/' + identifier + '/' + userId] = {
+            username: username,
+            score: score
+        };
+        firebase.database().ref().update(updates).then(() => {
+            console.log("Score updated successfully");
+            displayLeaderboard(identifier);
+        }).catch((error) => {
+            console.error("Error updating score:", error);
+        });
+    }
+}
+        // Event Listeners
+        document.getElementById('username-submit-btn').addEventListener('click', function() {
+            var username = document.getElementById('username-input').value.trim();
+            if (username) {
+                createUsername(username);
+            }
+        });
+
+        document.getElementById('leaderboard-close-btn').addEventListener('click', function() {
+            document.getElementById('leaderboard-overlay').style.display = 'none';
+            if (gameEngine && gameEngine.play) {
+                gameEngine.play();
+            }
+        });
+
+        // Expose updateUserScore to global scope for GameSalad to use
+        window.updateUserScore = updateUserScore;
+
+        // Start the process
+        checkExistingAccount();
+    })();
+    </script>
+</body>
+</html>
